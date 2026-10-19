@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -21,6 +24,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'phone',
+        'building_id',
+        'room_id',
+        'is_active',
     ];
 
     /**
@@ -43,6 +51,32 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function building(): BelongsTo
+    {
+        return $this->belongsTo(Building::class);
+    }
+
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class);
+    }
+
+    public function serviceUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceUnit::class, 'user_service_unit');
+    }
+
+    public function assignedReports(): HasMany
+    {
+        return $this->hasMany(ReportAssignment::class, 'staff_id');
+    }
+
+    public function reportedReports(): HasMany
+    {
+        return $this->hasMany(Report::class, 'reporter_id');
     }
 }
