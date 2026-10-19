@@ -36,7 +36,15 @@
             <button type="submit">Masuk</button>
         </form>
 
-        <p>Akun development: password <code>password</code>.</p>
+        @if (app()->environment('local'))
+            <p>Akun development:</p>
+            <ul>
+                <li>Penghuni: <code>resident@example.test</code></li>
+                <li>Petugas: <code>staff@example.test</code></li>
+                <li>Manajer: <code>manager@example.test</code></li>
+                <li>Password: <code>password</code></li>
+            </ul>
+        @endif
     </main>
 </body>
 </html>
