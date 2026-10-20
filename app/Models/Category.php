@@ -15,12 +15,16 @@ class Category extends Model
         'name',
         'default_service_unit_id',
         'default_visibility',
+        'is_sensitive',
         'is_active',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_sensitive' => 'boolean',
+            'is_active' => 'boolean',
+        ];
     }
 
     public function defaultServiceUnit(): BelongsTo

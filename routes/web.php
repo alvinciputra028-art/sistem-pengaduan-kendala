@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,4 +21,12 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('role:resident,staff,manager')
         ->name('dashboard');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/create', [ReportController::class, 'create'])
+        ->middleware('role:resident')
+        ->name('reports.create');
+    Route::post('/reports', [ReportController::class, 'store'])
+        ->middleware('role:resident')
+        ->name('reports.store');
+    Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show');
 });

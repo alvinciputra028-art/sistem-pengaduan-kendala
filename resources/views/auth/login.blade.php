@@ -40,7 +40,12 @@
             <p>Akun development:</p>
             <ul>
                 <li>Penghuni: <code>resident@example.test</code></li>
+                <li>Teman sekamar: <code>resident-roommate@example.test</code></li>
+                <li>Penghuni gedung Putra: <code>resident-putra@example.test</code></li>
+                <li>Penghuni gedung Putri: <code>resident-putri@example.test</code></li>
                 <li>Petugas: <code>staff@example.test</code></li>
+                <li>Petugas pemeliharaan: <code>staff-maintenance@example.test</code></li>
+                <li>Petugas keamanan: <code>staff-security@example.test</code></li>
                 <li>Manajer: <code>manager@example.test</code></li>
                 <li>Password: <code>password</code></li>
             </ul>

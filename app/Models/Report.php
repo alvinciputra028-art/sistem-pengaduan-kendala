@@ -26,6 +26,8 @@ class Report extends Model
         'impact_score',
         'urgency_score',
         'safety_risk_score',
+        'assessment_answers',
+        'incident_duration',
         'priority',
         'priority_score',
         'status',
@@ -43,6 +45,10 @@ class Report extends Model
             'estimated_resolution_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'impact_score' => 'integer',
+            'urgency_score' => 'integer',
+            'safety_risk_score' => 'integer',
+            'assessment_answers' => 'array',
         ];
     }
 
@@ -84,5 +90,10 @@ class Report extends Model
     public function priorityHistories(): HasMany
     {
         return $this->hasMany(ReportPriorityHistory::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
     }
 }
