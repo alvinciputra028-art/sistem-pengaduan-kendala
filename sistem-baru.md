@@ -95,8 +95,6 @@ adalah fondasi yang baik. Namun untuk sistem yang lebih serius, status sebaiknya
 - `triaged`
 - `assigned`
 - `in_progress`
-- `waiting_reporter`
-- `waiting_external_party`
 - `resolved`
 - `closed`
 - `reopened`

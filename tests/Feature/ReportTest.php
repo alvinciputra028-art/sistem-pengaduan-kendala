@@ -242,6 +242,203 @@ class ReportTest extends TestCase
             ->assertDontSee($owner->name);
     }
 
+    public function test_manager_can_assign_report_to_valid_unit_and_staff(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $unit = ServiceUnit::create(['name' => 'Pemeliharaan']);
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+
+        $this->actingAs($manager)->post(route('reports.assignments.store', $report), [
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'note' => 'Ditugaskan untuk pemeriksaan.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+
+        $this->assertDatabaseHas('report_assignments', [
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+        ]);
+        $this->assertSame('assigned', $report->fresh()->status);
+    }
+
+    public function test_report_detail_shows_active_staff_name_and_unit(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['name' => 'Petugas Detail', 'role' => 'staff']);
+        $unit = ServiceUnit::create(['name' => 'Pemeliharaan']);
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('Nama: Petugas Detail')
+            ->assertSee('Unit layanan: Pemeliharaan');
+    }
+
+    public function test_report_detail_shows_unassigned_when_no_active_staff_exists(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['reporter_id' => $resident->id]);
+
+        $this->actingAs($resident)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('Belum ditugaskan.')
+            ->assertDontSee('Unit layanan:');
+    }
+
+    public function test_staff_can_update_assigned_report_but_cannot_assign_it(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $unit = ServiceUnit::create(['name' => 'Pemeliharaan']);
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($staff)->patch(route('reports.triage.update', $report), [
+            'priority' => 'high',
+            'reason' => 'Pemeriksaan sedang dilakukan.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+
+        $this->assertSame('assigned', $report->fresh()->status);
+        $this->assertSame('high', $report->fresh()->priority);
+        $this->assertDatabaseHas('report_priority_histories', [
+            'report_id' => $report->id,
+            'old_priority' => 'normal',
+            'new_priority' => 'high',
+        ]);
+
+        $this->actingAs($staff)->post(route('reports.triage.status', $report), [
+            'status' => 'in_progress',
+            'note' => 'Pemeriksaan sedang dilakukan.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+        $this->assertSame('in_progress', $report->fresh()->status);
+
+        $this->actingAs($staff)->post(route('reports.assignments.store', $report), [
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+        ])->assertForbidden();
+    }
+
+    public function test_priority_change_requires_reason_and_manager_triage_is_automatic(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+
+        $this->actingAs($manager)->patch(route('reports.triage.update', $report), [
+            'priority' => 'critical',
+        ])->assertSessionHasErrors('reason');
+
+        $this->actingAs($manager)->patch(route('reports.triage.update', $report), [
+            'priority' => 'normal',
+            'reason' => 'Hasil peninjauan awal.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+
+        $this->assertSame('triaged', $report->fresh()->status);
+        $this->assertDatabaseHas('report_status_histories', [
+            'report_id' => $report->id,
+            'from_status' => 'submitted',
+            'to_status' => 'triaged',
+        ]);
+    }
+
+    public function test_staff_cannot_skip_status_transition(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $unit = ServiceUnit::create(['name' => 'Keamanan']);
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($staff)->post(route('reports.triage.status', $report), [
+            'status' => 'resolved',
+            'note' => 'Tidak boleh melewati proses.',
+        ])->assertStatus(422);
+        $this->assertSame('assigned', $report->fresh()->status);
+    }
+
+    public function test_staff_can_only_move_from_assigned_to_in_progress_and_then_resolved(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $unit = ServiceUnit::create(['name' => 'Keamanan']);
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($staff)->post(route('reports.triage.status', $report), [
+            'status' => 'waiting_reporter',
+            'note' => 'Status lama tidak digunakan.',
+        ])->assertSessionHasErrors('status');
+
+        $this->actingAs($staff)->post(route('reports.triage.status', $report), [
+            'status' => 'in_progress',
+            'note' => 'Penanganan dimulai.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+
+        $this->actingAs($staff)->post(route('reports.triage.status', $report), [
+            'status' => 'resolved',
+            'note' => 'Kendala sudah ditangani.',
+        ])->assertRedirect(route('reports.triage.edit', $report));
+
+        $this->assertSame('resolved', $report->fresh()->status);
+        $this->assertDatabaseMissing('report_status_histories', [
+            'report_id' => $report->id,
+            'to_status' => 'waiting_reporter',
+        ]);
+    }
+
     private function referenceData(): array
     {
         $building = Building::create(['name' => 'Rusun INN']);
@@ -264,5 +461,28 @@ class ReportTest extends TestCase
             'worsening' => 'no',
             'ongoing' => 'yes',
         ];
+    }
+
+    private function makeReport(Building $building, Room $room, Category $category, string $status): Report
+    {
+        return Report::create([
+            'ticket_number' => 'LAP-TEST-'.uniqid(),
+            'reporter_id' => User::factory()->create([
+                'role' => 'resident',
+                'building_id' => $building->id,
+                'room_id' => $room->id,
+            ])->id,
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+            'category_id' => $category->id,
+            'title' => 'Laporan uji triase',
+            'description' => 'Deskripsi laporan uji.',
+            'location_type' => 'room',
+            'visibility' => 'participants',
+            'identity_visibility' => 'visible',
+            'priority' => 'normal',
+            'priority_score' => 5,
+            'status' => $status,
+        ]);
     }
 }

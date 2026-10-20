@@ -21,6 +21,9 @@
                 <p>{{ $report->ticket_number }} · {{ $report->category->name }} · {{ $report->status }}</p>
                 <p>Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
                 <p>{{ $report->building->name }}</p>
+                @if (auth()->user()->role !== 'resident')
+                    <p><a href="{{ route('reports.triage.edit', $report) }}">Buka triase</a></p>
+                @endif
             </article>
         @empty
             <p>Belum ada laporan yang dapat ditampilkan.</p>

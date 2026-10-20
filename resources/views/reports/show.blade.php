@@ -22,6 +22,13 @@
         @if ($canSeeReporterRoom && $report->reporter->room)
             <p>Kamar pelapor: {{ $report->reporter->room->room_number }}</p>
         @endif
+        <h2>Petugas</h2>
+        @if ($activeAssignment && $activeAssignment->staff)
+            <p>Nama: {{ $activeAssignment->staff->name }}</p>
+            <p>Unit layanan: {{ $activeAssignment->serviceUnit->name }}</p>
+        @else
+            <p>Belum ditugaskan.</p>
+        @endif
         <p>Lokasi: {{ $report->building->name }}{{ $report->room ? ' - Kamar '.$report->room->room_number : '' }}</p>
         @if ($report->location_description)
             <p>Keterangan lokasi: {{ $report->location_description }}</p>

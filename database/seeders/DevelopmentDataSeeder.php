@@ -228,5 +228,38 @@ class DevelopmentDataSeeder extends Seeder
             ['to_status' => 'assigned'],
             ['from_status' => 'submitted', 'changed_by' => $assignment->assigned_by, 'note' => 'Laporan contoh ditugaskan.'],
         );
+
+        $triageReport = Report::updateOrCreate(
+            ['ticket_number' => 'LAP-SEED-0002'],
+            [
+                'reporter_id' => $roommate->id,
+                'building_id' => $inn->id,
+                'room_id' => $innRoom->id,
+                'category_id' => Category::where('name', 'Pemeliharaan')->firstOrFail()->id,
+                'title' => 'Keran kamar bocor',
+                'description' => 'Laporan contoh yang menunggu triase manajer.',
+                'location_type' => 'room',
+                'visibility' => 'participants',
+                'identity_visibility' => 'visible',
+                'impact_score' => 1,
+                'urgency_score' => 2,
+                'safety_risk_score' => 0,
+                'assessment_answers' => [
+                    'affects_many' => 'no',
+                    'unusable' => 'no',
+                    'safety_risk' => 'no',
+                    'worsening' => 'yes',
+                    'ongoing' => 'yes',
+                ],
+                'incident_duration' => 'today',
+                'priority' => 'normal',
+                'priority_score' => 5,
+                'status' => 'submitted',
+            ],
+        );
+        $triageReport->statusHistories()->firstOrCreate(
+            ['to_status' => 'submitted'],
+            ['changed_by' => $roommate->id, 'note' => 'Laporan triase contoh dibuat oleh seeder.'],
+        );
     }
 }

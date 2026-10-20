@@ -176,11 +176,14 @@ class ReportController extends Controller
             || $isAssignedStaff
             || ($report->identity_visibility === 'visible' && $report->visibility === 'public_building');
         $canSeeReporterRoom = $viewer->role === 'manager' || $isAssignedStaff || $isReporter;
+        $activeAssignment = $report->assignments
+            ->first(fn ($assignment): bool => $assignment->unassigned_at === null);
 
         return view('reports.show', compact(
             'report',
             'canSeeReporterIdentity',
             'canSeeReporterRoom',
+            'activeAssignment',
         ));
     }
 
