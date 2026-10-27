@@ -52,7 +52,8 @@ class ReportPolicy
 
     public function updatePriority(User $user, Report $report): bool
     {
-        return $this->triage($user, $report);
+        return $report->status !== 'waiting_confirmation'
+            && $this->triage($user, $report);
     }
 
     public function comment(User $user, Report $report): bool

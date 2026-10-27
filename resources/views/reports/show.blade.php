@@ -12,6 +12,18 @@
         <h1>{{ $report->title }}</h1>
         <p><strong>{{ $report->ticket_number }}</strong></p>
         <p>Status: {{ $report->status }} · Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
+        @if ($report->estimated_response_at || $report->estimated_resolution_at || $report->estimate_note)
+            <h2>Estimasi penanganan</h2>
+            @if ($report->estimated_response_at)
+                <p>Estimasi respons: {{ $report->estimated_response_at->format('d/m/Y H:i') }}</p>
+            @endif
+            @if ($report->estimated_resolution_at)
+                <p>Estimasi selesai: {{ $report->estimated_resolution_at->format('d/m/Y H:i') }}</p>
+            @endif
+            @if ($report->estimate_note)
+                <p>Catatan estimasi: {{ $report->estimate_note }}</p>
+            @endif
+        @endif
         @can('close', $report)
             <form method="POST" action="{{ route('reports.close', $report) }}">
                 @csrf

@@ -1,1119 +1,441 @@
-Requested chat rename
-Completed with input: {
-  "title": "Strategi modernisasi sistem pengaduan",
-  "automatic": true
-}
+# Sistem Pengaduan Kendala
 
-Read , line 1 to the end
-Completed with input: {
-  "path": "C:\\xampp_new\\htdocs\\sistem-pengaduan-kendala\\README.md",
-  "view_range": [
-    1,
-    -1
-  ]
-}
+Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
+pengujian, dan backlog proyek Laravel ini. Status terakhir diperbarui pada
+**27 Oktober 2026**.
 
-Saya sudah membaca README. Untuk memberi rekomendasi yang tidak hanya berdasarkan deskripsi fitur, saya akan mencocokkannya dengan skema database dan alur implementasi utama sistem lama, lalu menyusun usulan arsitektur, prioritas, dan rencana migrasi.
+## Keputusan arsitektur
 
-Read , line 1 to the end
-Completed with input: {
-  "path": "C:\\xampp_new\\htdocs\\sistem-pengaduan-kendala\\complaint.sql",
-  "view_range": [
-    1,
-    -1
-  ]
-}
+- Framework: Laravel dengan modular monolith.
+- Database pengembangan/produksi: MySQL/MariaDB.
+- UI saat ini: Blade; Livewire atau broadcasting dapat ditambahkan kemudian.
+- Role aplikasi: `resident`, `staff`, dan `manager`.
+- Akses laporan, triase, komentar, dan lampiran menggunakan Policy terpusat.
+- Nomor tiket adalah identitas manusia; ID database tetap menjadi identitas
+  internal.
+- Laporan kamar menggunakan kamar pelapor. Laporan area bersama menggunakan
+  deskripsi lokasi.
+- Kategori disimpan sebagai tabel dinamis, bukan `ENUM`.
+- Lampiran disimpan di storage non-public dan diakses melalui endpoint yang
+  memeriksa hak akses.
 
-Read , line 1 to the end
-Completed with input: {
-  "path": "C:\\xampp_new\\htdocs\\sistem-pengaduan-kendala\\penghuni\\proses_pengaduan.php",
-  "view_range": [
-    1,
-    -1
-  ]
-}
+## Aturan akses dan privasi
 
-Read , line 1 to the end
-Completed with input: {
-  "path": "C:\\xampp_new\\htdocs\\sistem-pengaduan-kendala\\teknisi\\update_status.php",
-  "view_range": [
-    1,
-    -1
-  ]
-}
+### Resident
 
-Read , line 1 to the end
-Completed with input: {
-  "path": "C:\\xampp_new\\htdocs\\sistem-pengaduan-kendala\\shared\\detail_pengaduan.php",
-  "view_range": [
-    1,
-    -1
-  ]
-}
+- Dapat melihat laporan miliknya.
+- Dapat melihat laporan `public_building` pada gedung yang sama.
+- Tidak dapat melihat laporan privat milik penghuni gedung lain.
+- Dapat membuat laporan untuk gedung dan kamar yang terhubung ke akunnya.
+- Dapat menutup laporan miliknya ketika status `waiting_confirmation`.
+- Dapat membuka kembali laporan miliknya ketika status `closed`.
 
-## Kesimpulan singkat
+### Staff
 
-Proyek lama ini **layak dijadikan fondasi**, tetapi sebaiknya tidak dikembangkan dengan menambah banyak kondisi baru ke PHP Native yang sekarang. Struktur saat ini sudah memiliki konsep dasar yang benar—autentikasi, peran pengguna, tiket, status, teknisi, bukti, dan laporan—namun model datanya masih terlalu sederhana untuk mendukung forum gedung, percakapan dua arah, lampiran multi-format, prioritas, moderasi, dan audit.
+- Hanya dapat melihat dan menangani laporan yang memiliki assignment aktif
+  kepadanya.
+- Dapat mengubah status laporan yang di-assign melalui transisi yang valid.
+- Dapat mengubah prioritas dan estimasi selama laporan belum
+  `waiting_confirmation` atau `closed`.
+- Tidak dapat melakukan assignment.
 
-Untuk kebutuhan Anda, pilihan yang paling objektif adalah:
+### Manager
 
-> **Laravel + MySQL/MariaDB + Blade/Livewire terlebih dahulu**, lalu menambahkan Laravel Reverb/WebSockets jika notifikasi atau percakapan real-time benar-benar diperlukan.
+- Dapat melihat seluruh laporan.
+- Dapat melakukan triase, assignment, perubahan prioritas, dan perubahan
+  estimasi.
+- Dapat menutup laporan `waiting_confirmation` secara administratif.
+- Dapat membuka kembali laporan `closed` jika penghuni tidak dapat bertindak.
 
-Tidak perlu langsung menggunakan arsitektur microservices atau aplikasi mobile. Bangun modular monolith yang rapi terlebih dahulu.
+Identitas dan nomor kamar penghuni hanya ditampilkan sesuai kebutuhan:
+manajer dan petugas yang di-assign dapat melihat detail operasional, sedangkan
+penghuni lain tidak melihat nomor kamar.
 
----
+## Alur status
 
-# 1. Evaluasi sistem lama
+Status yang digunakan:
 
-## Bagian yang layak dipertahankan
+```text
+submitted
+  -> triaged
+  -> assigned
+  -> in_progress
+  -> waiting_confirmation
+  -> closed
+```
 
-### 1. Konsep ticketing
+Alur tambahan:
 
-Konsep nomor tiket pada `README.md` sudah tepat. Setiap laporan memiliki identitas yang dapat dirujuk penghuni, teknisi, dan manajer.
+```text
+submitted -> assigned
+triaged -> in_progress
+reopened -> triaged | assigned | in_progress
+closed -> reopened
+```
 
-Sebaiknya dipertahankan, tetapi generator tiket perlu diperbaiki. Implementasi sekarang menghitung jumlah tiket pada hari berjalan di `penghuni/proses_pengaduan.php`. Cara ini bisa menghasilkan nomor tiket ganda jika dua penghuni mengirim laporan hampir bersamaan.
+`waiting_confirmation` berarti petugas menyatakan pekerjaan selesai. Status ini
+wajib dilalui sebelum laporan ditutup. Penghuni atau manajer yang berwenang
+kemudian menutup laporan. Jika masalah belum selesai, laporan dapat dibuka
+kembali menjadi `reopened`.
 
-Sebaiknya:
+Prioritas tidak dapat diubah pada `waiting_confirmation` atau `closed`.
+Perubahan prioritas wajib menyertakan alasan dan dicatat pada histori.
 
-- gunakan `UUID` atau ID internal sebagai identitas utama;
-- nomor tiket tetap dibuat untuk kebutuhan manusia;
-- gunakan counter database atau kombinasi tahun-bulan dan sequence;
-- tambahkan unique index pada `ticket_number`.
+## Estimasi penanganan
 
-### 2. Alur status dasar
+Laporan memiliki tiga field estimasi:
 
-Status:
+- `estimated_response_at`: perkiraan kapan petugas merespons atau mulai
+  menangani laporan.
+- `estimated_resolution_at`: perkiraan kapan pekerjaan selesai.
+- `estimate_note`: catatan tambahan untuk penghuni.
 
-- Menunggu
-- Diproses
-- Selesai
+Estimasi dapat diubah oleh manajer atau petugas yang di-assign selama laporan
+belum `waiting_confirmation` atau `closed`. Nilai terbaru menggantikan nilai
+sebelumnya; histori estimasi belum menjadi fitur MVP.
 
-adalah fondasi yang baik. Namun untuk sistem yang lebih serius, status sebaiknya diperluas menjadi:
+Estimasi yang tersedia ditampilkan pada detail laporan penghuni. Estimasi
+terlewati belum memicu sanksi otomatis atau notifikasi SLA.
 
-- `draft`
-- `submitted`
-- `triaged`
-- `assigned`
-- `in_progress`
-- `resolved`
-- `closed`
-- `reopened`
-- `rejected`
-- `duplicate`
+## Struktur data inti
 
-Tidak semua status harus ditampilkan kepada penghuni. Sistem internal boleh lebih detail, sedangkan penghuni melihat status yang lebih sederhana.
-
-### 3. Pembagian peran
-
-Sistem lama sudah memisahkan:
-
-- penghuni;
-- teknisi;
-- manajer.
-
-Hal ini perlu dipertahankan dengan tiga role aplikasi saja:
-
-- `resident`
-- `staff`
-- `manager`
-
-`staff` menggantikan istilah teknisi karena tanggung jawabnya dapat mencakup
-jaringan, kebersihan, keamanan, administrasi, dan layanan lain. Manajer
-menjalankan fungsi pengawasan, termasuk tindakan yang sebelumnya disebut
-sebagai fungsi supervisor. Tidak perlu role supervisor, administrator, atau
-moderator pada tahap ini.
-
-Fungsi teknis administrasi sistem seperti mengelola kategori, akun, dan unit
-layanan dapat diberikan kepada manajer melalui izin aplikasi. Jika kelak
-organisasi membesar, izin tersebut dapat dipisahkan menjadi role baru tanpa
-mengubah data laporan.
-
-### 4. Pembatasan berdasarkan gedung
-
-Aturan bahwa penghuni hanya dapat melihat laporan dari gedung yang sama merupakan keputusan yang baik. Di `shared/detail_pengaduan.php`, aturan ini sudah mulai diterapkan.
-
-Namun “gedung yang sama” sebaiknya tidak disimpan sebagai teks atau enum yang
-tersebar di banyak tabel. Gunakan:
-
-- `buildings`
-- `rooms`
-- `users`
-
-Nomor kamar seperti `301` dapat digunakan untuk menampilkan lantai, tetapi
-lantai tidak perlu menjadi tabel tersendiri. Laporan area bersama menyimpan
-deskripsi lokasi, misalnya “lorong lantai 3 dekat kamar 307”.
-
-### 5. Bukti penyelesaian
-
-Kemampuan teknisi mengunggah bukti penyelesaian adalah fitur yang berguna dan sebaiknya dipertahankan. Tetapi jangan menyimpan hanya satu kolom seperti `bukti_foto` dan `bukti_penyelesaian`.
-
-Model baru sebaiknya memungkinkan banyak lampiran:
-
-- foto sebelum;
-- foto sesudah;
-- video;
-- rekaman suara;
-- dokumen pendukung.
-
----
-
-# 2. Masalah utama pada sistem lama
-
-Berdasarkan `complaint.sql` dan alur di `teknisi/update_status.php`, beberapa keterbatasan utama adalah sebagai berikut.
-
-## 1. Data pengaduan terlalu datar
-
-Saat ini satu tabel `pengaduan` menampung:
-
-- informasi laporan;
-- teknisi;
-- penanganan dini;
-- komentar penyelesaian;
-- bukti laporan;
-- bukti penyelesaian.
-
-Struktur ini akan cepat bermasalah ketika Anda menambahkan percakapan banyak pesan dan banyak lampiran.
-
-Pisahkan menjadi entitas:
+Entitas utama:
 
 ```text
 users
 buildings
 rooms
-categories
-reports
-report_assignments
-report_status_histories
-comments
-attachments
-notifications
-priorities
-```
-
-## 2. Belum ada konsep percakapan
-
-`penanganan_dini` dan `komentar_penyelesaian` hanya cocok untuk komunikasi satu atau dua kali. Kebutuhan Anda sudah mengarah ke **thread percakapan**.
-
-Contoh:
-
-```text
-reports
-  └── comments
-        ├── komentar penghuni
-        ├── balasan teknisi
-        ├── komentar manajer
-        └── lampiran pada masing-masing komentar
-```
-
-Jangan menjadikan komentar sebagai kolom baru di tabel laporan.
-
-## 3. Kategori menggunakan ENUM
-
-Di database lama, kategori menggunakan ENUM:
-
-```text
-Internet, Listrik, Air, Bangunan, Perabotan, Elektronik, Lainnya
-```
-
-Ini kurang fleksibel ketika Anda ingin menambahkan:
-
-- keamanan;
-- kebersihan;
-- administrasi;
-- fasilitas umum;
-- ketertiban;
-- kesehatan;
-- parkir;
-- keuangan;
-- keluhan sosial;
-- lainnya.
-
-Sebaiknya gunakan tabel `categories`, misalnya:
-
-```text
-categories
-- id
-- name
-- slug
-- description
-- is_active
-- default_service_unit_id
-```
-
-Kategori dapat ditambahkan dari panel administrasi tanpa mengubah struktur database.
-
-## 4. Kategori lokasi belum cukup
-
-Laporan seperti:
-
-- Wi-Fi bermasalah;
-- kebisingan di lantai 3;
-- tumpukan sampah di dapur;
-
-bukan hanya memiliki kategori, tetapi juga memiliki **lokasi**.
-
-Laporan sebaiknya memiliki pilihan:
-
-- kamar tertentu;
-- gedung;
-- area bersama;
-- area publik;
-- lokasi rahasia atau privat, jika diperlukan.
-
-## 5. Upload file masih terlalu terbatas
-
-Implementasi lama di `penghuni/proses_pengaduan.php` hanya memeriksa ekstensi file dan ukuran file. Ini belum cukup untuk sistem produksi.
-
-Untuk upload baru, lakukan:
-
-- validasi MIME type menggunakan isi file, bukan hanya ekstensi;
-- batas ukuran berbeda berdasarkan jenis file;
-- nama file acak;
-- penyimpanan di luar direktori publik jika memungkinkan;
-- pemeriksaan virus atau file berbahaya;
-- pembatasan jumlah lampiran;
-- thumbnail untuk gambar;
-- kontrol siapa yang boleh mengakses lampiran;
-- penghapusan metadata sensitif bila relevan;
-- larangan file executable seperti PHP, HTML, SVG berbahaya, dan sejenisnya.
-
-Untuk tahap awal, saya menyarankan:
-
-| Jenis | Batas awal |
-|---|---:|
-| Gambar | 5 MB |
-| Audio | 10–20 MB |
-| Video | 50–100 MB |
-| Dokumen | 10 MB |
-
-Batas ini dapat disesuaikan setelah melihat kapasitas server.
-
-## 6. Privasi masih terlalu longgar
-
-Pada detail laporan lama, beberapa pihak dapat melihat nomor HP pengguna. Untuk sistem baru, jangan menampilkan nomor telepon secara otomatis kepada semua pihak.
-
-Contoh aturan:
-
-- penghuni lain hanya melihat nama tampilan, bukan nomor kamar lengkap;
-- teknisi dapat melihat lokasi yang diperlukan untuk bekerja;
-- manajer dapat melihat data lengkap sesuai kewenangan;
-- nomor HP hanya ditampilkan jika memang diperlukan dan diizinkan;
-- laporan sensitif tidak masuk forum publik.
-
-Ini penting terutama untuk kategori keamanan, konflik antar penghuni, pelecehan, atau administrasi pribadi.
-
-## 7. Tidak ada audit trail
-
-Perubahan status, penugasan teknisi, penghapusan komentar, dan perubahan prioritas harus dicatat.
-
-Contoh:
-
-```text
-report_status_histories
-- report_id
-- from_status
-- to_status
-- changed_by
-- reason
-- created_at
-```
-
-Dengan ini manajer dapat mengetahui siapa yang mengubah status dan kapan.
-
----
-
-# 3. Framework yang disarankan
-
-## Pilihan utama: Laravel
-
-Laravel paling sesuai untuk kondisi Anda karena:
-
-1. Anda sudah menggunakan PHP Native.
-2. Laravel tetap menggunakan PHP dan MySQL/MariaDB.
-3. Dokumentasi dan komunitasnya besar.
-4. Memiliki migration, validation, authentication, authorization, queue, notification, storage, dan testing.
-5. Cocok untuk aplikasi internal berbasis CRUD dan workflow.
-6. Dapat dikembangkan bertahap tanpa harus langsung membuat API dan aplikasi mobile.
-7. Memiliki ekosistem untuk real-time event melalui Laravel Reverb atau layanan broadcasting lain.
-
-Stack yang saya sarankan:
-
-```text
-PHP 8.3 atau versi stabil yang kompatibel
-Laravel
-MySQL/MariaDB
-Blade
-Livewire
-Tailwind CSS atau Bootstrap
-Redis opsional
-Laravel Reverb opsional
-PHPUnit/Pest
-```
-
-### Mengapa Blade + Livewire?
-
-Untuk tahap awal, Anda belum perlu membuat frontend SPA kompleks. Blade + Livewire dapat memberikan:
-
-- formulir interaktif;
-- filter laporan;
-- komentar;
-- upload lampiran;
-- notifikasi sederhana;
-- pembaruan data tanpa banyak JavaScript.
-
-Jika nanti diperlukan aplikasi mobile atau integrasi pihak ketiga, Laravel dapat menambahkan API dengan Sanctum.
-
-## Alternatif framework
-
-### CodeIgniter 4
-
-Kelebihan:
-
-- lebih ringan;
-- cukup dekat dengan gaya PHP Native;
-- relatif mudah dipelajari.
-
-Kekurangan:
-
-- ekosistem dan pola bawaan tidak selengkap Laravel;
-- Anda kemungkinan akan membangun sendiri lebih banyak komponen;
-- untuk fitur komentar, notifikasi, permission, dan media, Laravel biasanya lebih nyaman.
-
-CodeIgniter masuk akal jika server sangat terbatas atau Anda menginginkan framework minimalis. Untuk proyek Anda, saya tetap lebih merekomendasikan Laravel.
-
-### Symfony
-
-Sangat baik secara arsitektur dan cocok untuk sistem enterprise. Namun kurva belajar dan konfigurasi biasanya lebih berat untuk tahap migrasi pertama dari PHP Native.
-
-### Node.js/NestJS atau Django
-
-Keduanya bisa digunakan, tetapi perpindahan dari PHP Native menjadi lebih besar. Anda harus mengganti bahasa, toolchain, deployment, dan pola pengembangan sekaligus. Tidak ada keuntungan yang cukup besar untuk membenarkan kompleksitas tersebut pada tahap ini.
-
----
-
-# 4. Desain produk yang disarankan
-
-Sebaiknya sistem dibagi menjadi dua jenis ruang.
-
-## A. Laporan komunitas atau forum gedung
-
-Digunakan untuk kendala umum yang relevan bagi penghuni lain:
-
-- Wi-Fi gedung bermasalah;
-- lampu lorong mati;
-- kebisingan area bersama;
-- sampah menumpuk;
-- kerusakan fasilitas umum;
-- gangguan air di lantai tertentu.
-
-Fitur:
-
-- dapat dilihat penghuni dalam gedung yang sama;
-- penghuni dapat memberi komentar;
-- penghuni dapat memberi reaksi atau “saya juga mengalami”;
-- sistem dapat menggabungkan laporan yang sama;
-- petugas dapat memberikan pembaruan resmi;
-- identitas pelapor dapat ditampilkan atau disamarkan sesuai kebijakan.
-
-## B. Laporan privat
-
-Digunakan untuk hal-hal sensitif atau personal:
-
-- kerusakan di kamar pribadi;
-- masalah administrasi individu;
-- konflik antar penghuni;
-- keamanan pribadi;
-- laporan yang mengandung data sensitif.
-
-Fitur:
-
-- hanya pelapor, petugas yang berkaitan, dan manajer;
-- tidak muncul di forum umum;
-- dapat memiliki komentar internal dan komentar yang terlihat penghuni;
-- lampiran memiliki kontrol akses khusus.
-
-Jangan menjadikan semua laporan otomatis publik. Saat membuat laporan, pengguna sebaiknya memilih:
-
-```text
-Visibilitas:
-- Umum untuk penghuni gedung
-- Privat
-- Rahasia untuk pengelola
-```
-
-Untuk kategori keamanan, administrasi, dan konflik, sebaiknya default-nya privat atau rahasia.
-
----
-
-# 5. Komentar: forum dan percakapan jangan dicampur
-
-Anda menyebut dua kebutuhan:
-
-1. komentar antar penghuni pada laporan umum;
-2. percakapan seperti WhatsApp antara penghuni dan petugas.
-
-Keduanya sebaiknya memakai model teknis yang mirip, tetapi kebijakan aksesnya berbeda.
-
-## Komentar forum
-
-Komentar terhubung ke laporan publik dan dapat dilihat penghuni yang berhak melihat laporan tersebut.
-
-Kemampuan yang dibutuhkan:
-
-- balasan;
-- edit dalam batas waktu tertentu;
-- hapus oleh pemilik atau manajer;
-- penguncian diskusi oleh manajer jika diperlukan;
-- pagination;
-- pembatasan spam;
-- lampiran opsional.
-
-## Percakapan laporan
-
-Percakapan terhubung ke laporan dan hanya dapat dilihat oleh pihak yang berwenang.
-
-Contoh:
-
-```text
-Resident: Foto tambahan kondisi plafon
-Technician: Kami akan datang pukul 14.00
-Resident: Baik, saya ada di kamar
-Technician: Perbaikan selesai, silakan dicek
-```
-
-Setiap pesan dapat mempunyai:
-
-- isi teks;
-- pengirim;
-- waktu;
-- status dibaca;
-- lampiran;
-- tipe pesan;
-- metadata edit atau hapus.
-
-Untuk versi pertama, gunakan refresh/polling sederhana. Real-time WebSocket dapat ditambahkan setelah alur dasar stabil. Ini mengurangi risiko teknis saat MVP.
-
----
-
-# 6. Rekomendasi sistem prioritas
-
-Jangan membiarkan pengguna memilih prioritas akhir secara bebas. Pengguna boleh memilih tingkat urgensi awal, tetapi sistem atau petugas melakukan triase.
-
-## Model yang mudah dipahami
-
-Gunakan tiga faktor:
-
-### 1. Dampak
-
-| Nilai | Keterangan |
-|---:|---|
-| 1 | Hanya satu pengguna atau satu kamar |
-| 2 | Beberapa pengguna |
-| 3 | Satu area atau satu lantai |
-| 4 | Satu gedung |
-| 5 | Banyak gedung atau layanan utama |
-
-### 2. Urgensi
-
-| Nilai | Keterangan |
-|---:|---|
-| 1 | Tidak mendesak |
-| 2 | Bisa menunggu beberapa hari |
-| 3 | Mengganggu aktivitas |
-| 4 | Harus ditangani hari yang sama |
-| 5 | Harus segera ditangani |
-
-### 3. Risiko keselamatan
-
-| Nilai | Keterangan |
-|---:|---|
-| 0 | Tidak ada risiko |
-| 3 | Risiko kerusakan atau gangguan serius |
-| 5 | Potensi bahaya terhadap keselamatan |
-
-Rumus awal:
-
-```text
-Skor = (Dampak x 2) + (Urgensi x 2) + Risiko Keselamatan
-```
-
-Contoh:
-
-- tumpukan sampah kecil di dapur: dampak 2, urgensi 2, risiko 0  
-  skor = 8
-- Wi-Fi satu lantai mati: dampak 3, urgensi 3, risiko 0  
-  skor = 12
-- kabel listrik terbuka di area umum: dampak 4, urgensi 5, risiko 5  
-  skor = 23
-
-## Level prioritas
-
-| Prioritas | Skor | Contoh | Target respons |
-|---|---:|---|---|
-| P1 Kritis | 20+ atau ada bahaya keselamatan | kebakaran, kabel terbuka, kebocoran besar | segera |
-| P2 Tinggi | 14–19 | air satu lantai mati, pintu akses rusak | hari yang sama |
-| P3 Normal | 7–13 | Wi-Fi terganggu, lampu area tertentu mati | 1–3 hari |
-| P4 Rendah | 0–6 | permintaan kecil, kosmetik, saran | sesuai antrean |
-
-Tambahkan pengecualian:
-
-- laporan keamanan otomatis minimal P1/P2;
-- laporan yang melibatkan banyak penghuni mendapat peningkatan dampak;
-- laporan yang berulang dapat dinaikkan prioritas;
-- manajer dapat mengoreksi prioritas dengan alasan;
-- setiap perubahan prioritas dicatat di audit log.
-
-Jangan menjadikan prioritas sebagai ukuran “siapa yang melapor lebih dulu”. Prioritas harus menggambarkan **dampak dan risiko**, bukan status sosial pelapor.
-
----
-
-# 7. Rancangan database yang telah disepakati
-
-Rancangan ini sengaja tidak membuat tabel `floors`, `roles`,
-`supervisors`, `administrators`, atau `moderators`. Tiga role disimpan pada
-pengguna. Jika Laravel digunakan, pembatasan akses diterapkan melalui
-middleware dan policy, bukan melalui banyak kondisi di halaman.
-
-## Entitas pengguna dan lokasi
-
-```text
-users
-- id
-- role                 -- resident | staff | manager
-- name
-- email
-- password
-- phone nullable
-- building_id nullable -- wajib untuk resident; null untuk manager
-- room_id nullable     -- wajib untuk resident jika tinggal di kamar
-- is_active
-- created_at
-- updated_at
-
-buildings
-- id
-- name
-- is_active
-- created_at
-- updated_at
-
-rooms
-- id
-- building_id
-- room_number
-- is_active
-- created_at
-- updated_at
-
 service_units
-- id
-- name                 -- Jaringan, Kebersihan, Keamanan, Administrasi, dll.
-- is_active
-- created_at
-- updated_at
-
-service_unit_building
-- service_unit_id
-- building_id
-
-user_service_unit
-- user_id              -- digunakan untuk staff
-- service_unit_id
-
-user_building
-- user_id              -- digunakan untuk staff dengan cakupan khusus
-- building_id
-```
-
-`buildings` menunjukkan lokasi fisik. `service_units` menunjukkan unit kerja.
-Keduanya dipisahkan karena satu unit dapat melayani banyak gedung dan satu
-gedung dapat dilayani banyak unit. `user_building` membatasi petugas tertentu
-jika cakupannya berbeda dari cakupan umum unit layanan. Untuk manajer,
-pembatasan gedung tidak diterapkan.
-
-## Entitas klasifikasi dan laporan
-
-```text
 categories
-- id
-- name                 -- Internet, Kebersihan, Keamanan, Administrasi, dll.
-- default_service_unit_id nullable
-- default_visibility   -- public_building | private | manager_only
-- is_active
-- created_at
-- updated_at
-
 reports
-- id
-- ticket_number unique
-- reporter_id
-- building_id
-- room_id nullable
-- category_id
-- title
-- description
-- location_type        -- room | common_area | building
-- location_description
-- visibility           -- public_building | private | manager_only
-- identity_visibility  -- visible | masked_to_residents | private
-- impact_score
-- urgency_score
-- safety_risk_score
-- priority             -- critical | high | normal | low
-- priority_score
-- status               -- submitted | assigned | in_progress |
-                         -- waiting_confirmation | closed | reopened |
-                         -- rejected | duplicate
-- estimated_response_at nullable
-- estimated_resolution_at nullable
-- estimate_note nullable
-- resolved_at nullable
-- closed_at nullable
-- created_at
-- updated_at
-
 report_assignments
-- id
-- report_id
-- service_unit_id
-- staff_id nullable
-- assigned_by nullable  -- null jika dibuat oleh sistem
-- assigned_at
-- unassigned_at nullable
-- note nullable
-```
-
-`categories` adalah jenis masalah, bukan tipe kamar. Atribut `slug` dan
-`buildings.code` sengaja tidak digunakan pada MVP karena bukan kebutuhan
-bisnis inti. Keduanya dapat ditambahkan kemudian jika URL, integrasi, atau
-kode internal yang stabil benar-benar diperlukan.
-
-`reports.building_id` dan `reports.room_id` adalah lokasi kejadian, bukan
-salinan lokasi tempat tinggal pelapor. Keduanya tidak diisi manual sebagai
-identitas penghuni: formulir mengambil lokasi kamar penghuni dari data akun
-untuk laporan kamar pribadi, sedangkan laporan area bersama meminta penghuni
-memilih gedung dan mengisi deskripsi lokasi. Data lokasi disimpan pada
-`reports` agar tetap benar jika penghuni pindah gedung atau kamar setelah
-laporan dibuat.
-
-`room_id` boleh kosong untuk laporan gedung atau area bersama. Jika
-`room_id` terisi, database dan validasi aplikasi harus memastikan kamar
-tersebut berada pada `building_id` yang sama.
-
-Sistem menetapkan prioritas berdasarkan dampak, urgensi, dan risiko
-keselamatan. Penghuni tidak memilih prioritas akhir. Petugas memberikan
-estimasi waktu respons atau penyelesaian; estimasi yang terlewati memicu
-pengingat, bukan sanksi otomatis.
-
-Penugasan awal dibuat oleh sistem ke unit layanan berdasarkan kategori dan
-gedung. Manajer kemudian menetapkan petugas tertentu melalui
-`report_assignments`. Pada rancangan awal tidak ada fitur petugas mengambil
-laporan sendiri. Dengan demikian, pembagian tanggung jawab jelas dan semua
-laporan memiliki pihak yang dapat dimintai pertanggungjawaban. Laporan
-keamanan dan `manager_only` wajib melalui penugasan manajer.
-
-## Percakapan, lampiran, dan histori
-
-```text
 report_comments
-- id
-- report_id
-- user_id
-- body
-- visibility          -- public | participants | manager_only
-- created_at
-- updated_at
-- deleted_at nullable
-- deleted_by nullable
-
 attachments
-- id
-- report_id nullable
-- comment_id nullable
-- uploaded_by
-- storage_path
-- original_name
-- mime_type
-- size
-- checksum
-- retained_until nullable
-- created_at
-
 report_status_histories
-- id
-- report_id
-- from_status nullable
-- to_status
-- changed_by nullable  -- null jika perubahan otomatis oleh sistem
-- note nullable
-- created_at
-
 report_priority_histories
-- id
-- report_id
-- old_priority nullable
-- new_priority
-- score
-- changed_by nullable
-- reason nullable
-- created_at
-
 notifications
-- id
-- user_id
-- type
-- data
-- read_at nullable
-- created_at
 ```
 
-Lampiran dapat melekat langsung pada laporan atau pada komentar. Dengan
-demikian foto, audio, video, dan dokumen tidak memerlukan kolom terpisah.
-Retensi awal yang disarankan adalah dua tahun setelah laporan ditutup;
-metadata histori dapat disimpan lebih lama untuk evaluasi.
+### `users`
 
-Tabel `report_watchers` tidak digunakan pada MVP. Istilah watcher bukan
-pengguna yang sedang membuka halaman. Dalam aplikasi, watcher berarti
-pengguna yang berlangganan pembaruan laporan dan menerima notifikasi.
-Penerima notifikasi dapat ditentukan dari pelapor, petugas yang ditugaskan,
-manajer, dan peserta komentar. Fitur berlangganan eksplisit dapat ditambah
-kemudian jika benar-benar dibutuhkan.
-
-## Aturan akses inti
-
-```text
-resident:
-- laporan milik sendiri
-- laporan public_building pada building_id yang sama
-
-staff:
-- laporan yang memiliki assignment aktif kepadanya
-- manajer dapat melihat antrean sebelum petugas ditetapkan
-
-manager:
-- seluruh laporan dan histori
-- dapat mengelola kategori, unit layanan, penugasan, dan koreksi prioritas
-```
-
-Penghuni lain melihat nama pelapor sesuai `identity_visibility`. Petugas
-melihat nama dan nomor kamar bila diperlukan untuk pekerjaan. Manajer dapat
-melihat nama, kamar, dan gedung. Nomor telepon tidak ditampilkan otomatis.
-
-Status `waiting_confirmation` berarti petugas menyatakan pekerjaan selesai,
-tetapi laporan belum ditutup. Penghuni dapat mengonfirmasi dan menutup
-laporan atau memilih `reopened` jika masalah belum terselesaikan. Manajer
-dapat menutup laporan secara administratif dengan alasan yang tercatat.
-
----
-
-# 8. Tahap implementasi aktual dan rencana berikutnya
-
-Bagian ini menggantikan roadmap awal yang hanya bersifat usulan. Penilaian
-berikut dibuat berdasarkan isi proyek yang saat ini ada, termasuk migration,
-model, controller, view, route, dan test. Status diperbarui pada **27 Oktober
-2026**.
-
-## Ringkasan status
-
-| Tahap | Status | Penilaian |
+| Atribut | Tipe/aturan | Keterangan |
 |---|---|---|
-| 0. Kebijakan akses dan alur | 🟡 Sebagian | Aturan privasi, visibilitas, role, dan transisi sudah dirumuskan serta sebagian diterapkan, tetapi belum seluruhnya menjadi policy/audit yang konsisten. |
-| 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, profil, dashboard dasar, dan migration sudah tersedia. |
-| 2. Tiket inti | 🟢 Hampir selesai | Pembuatan laporan, nomor tiket unik, lokasi, visibilitas, assignment, histori, dan lampiran gambar sudah berjalan. |
-| 3. Triase dan prioritas | 🟢 MVP selesai | Skor otomatis, koreksi manajer, estimasi, transisi status, dan assignment sudah tersedia; antrean operasional masih sederhana. |
-| 4. Percakapan dan notifikasi | 🔴 Belum dimulai | Model komentar dan notifikasi sudah ada, tetapi belum ada endpoint, form, UI, atau pengiriman notifikasi yang dapat digunakan. |
-| 5. Fitur komunitas | 🔴 Belum dimulai | Belum ada feed khusus, dukungan “saya juga mengalami”, moderasi, laporan konten, atau duplikasi. |
-| 6. Migrasi data lama | 🔴 Belum dimulai | Belum ada importer, pemetaan data legacy, validasi hasil, atau mode read-only untuk aplikasi lama. |
+| `id` | bigint, PK | Identitas pengguna. |
+| `name` | string | Nama pengguna. |
+| `email` | string, unique | Kredensial login. |
+| `email_verified_at` | timestamp, nullable | Waktu verifikasi email. |
+| `password` | string | Password terenkripsi. |
+| `remember_token` | string, nullable | Token remember me Laravel. |
+| `role` | string(20), index, default `resident` | `resident`, `staff`, atau `manager`. |
+| `phone` | string(30), nullable | Nomor telepon, tidak ditampilkan otomatis. |
+| `building_id` | FK `buildings`, nullable | Gedung resident. Null untuk manager/staff yang cakupannya melalui pivot. |
+| `room_id` | FK `rooms`, nullable | Kamar resident. |
+| `is_active` | boolean, default true | Status akun. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-### Bukti implementasi yang sudah ada
+### `buildings`
 
-- `routes/web.php` memiliki 13 route untuk login, dashboard, daftar/detail
-  laporan, pembuatan laporan, triase, perubahan status, dan assignment.
-- Migration sudah memisahkan `reports`, `report_assignments`,
-  `report_comments`, `attachments`, histori status, histori prioritas, dan
-  `notifications`.
-- `ReportController` sudah memvalidasi kategori aktif, lokasi kamar/area,
-  visibilitas, jawaban asesmen, serta maksimal lima gambar 10 MB.
-- `ReportTriageController` sudah menerapkan transisi status sampai
-  `waiting_confirmation`, assignment yang dibatasi unit layanan dan gedung,
-  estimasi, serta histori perubahan.
-- Test feature sudah mencakup pembuatan laporan, pembatasan kamar, visibilitas
-  antar-gedung, dan penyamaran identitas.
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas gedung. |
+| `name` | string, unique | Nama gedung. |
+| `is_active` | boolean, default true | Status gedung. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-### Batasan verifikasi saat ini
+### `rooms`
 
-`php artisan route:list` berhasil menampilkan 13 route. `php artisan test`
-belum dapat digunakan sebagai bukti lulus karena environment test mengarah ke
-MySQL `127.0.0.1:3306`, sedangkan server MySQL tidak tersedia saat pemeriksaan
-(connection refused). Sebelum menyimpulkan implementasi selesai, konfigurasi
-test perlu diarahkan ke database SQLite sementara atau MySQL test yang
-tersedia, lalu seluruh suite harus dijalankan ulang.
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas kamar. |
+| `building_id` | FK `buildings`, cascade delete | Gedung pemilik kamar. |
+| `room_number` | string(20) | Nomor kamar. |
+| `is_active` | boolean, default true | Status kamar. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-## Tahap 0 — Menutup kebijakan yang masih terbuka
+Unique key: `building_id` + `room_number`.
 
-**Status: ✅ Selesai untuk aturan inti.**
+### `service_units`
 
-Kebijakan inti sekarang tercermin pada `ReportPolicy`, `ReportCommentPolicy`,
-dan `AttachmentPolicy`, yang didaftarkan terpusat melalui `AppServiceProvider`.
-Selesaikan pengerasan berikut sebelum menambah fitur baru:
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas unit layanan. |
+| `name` | string, unique | Contoh: Jaringan, Pemeliharaan, Keamanan. |
+| `is_active` | boolean, default true | Status unit. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-- buat Policy/Gate terpusat untuk akses laporan, triase, komentar, dan lampiran;
-- tetapkan siapa yang dapat menutup, membuka kembali, dan mengubah prioritas;
-- tambahkan audit log untuk perubahan akses, assignment, prioritas, status, dan
-  penghapusan lampiran;
-- tetapkan masa retensi lampiran dan aturan penghapusan datanya;
-- status `waiting_confirmation` wajib dilalui petugas sebelum penghuni atau
-  manajer menutup laporan;
-- penghuni pemilik laporan dapat menutup atau membuka kembali laporan;
-- manajer dapat menutup atau membuka kembali laporan secara administratif;
-- petugas aktif yang di-assign dan manajer dapat mengubah prioritas, dengan
-  alasan wajib saat nilainya berubah;
-- laporan dan lampiran yang ditutup memiliki masa retensi dua tahun.
+### `categories`
 
-### Skenario pengujian Tahap 0
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas kategori. |
+| `name` | string, unique | Jenis kendala. |
+| `default_service_unit_id` | FK `service_units`, nullable | Unit layanan rekomendasi. |
+| `default_visibility` | string(30), default `private` | Visibilitas default kategori. |
+| `is_active` | boolean, default true | Kategori dapat digunakan atau tidak. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-Gunakan data uji berikut agar skenario dapat diulang:
+### `reports`
 
-| Data | Nilai |
-|---|---|
-| Gedung | Gedung A dan Gedung B |
-| Penghuni | `resident_a` di Gedung A, `resident_b` di Gedung A, `resident_c` di Gedung B |
-| Manajer | `manager_a` |
-| Petugas aktif | `staff_a`, di-assign ke laporan Gedung A |
-| Petugas lain | `staff_b`, tidak di-assign ke laporan tersebut |
-| Laporan utama | `report_a`, pelapor `resident_a`, status awal `assigned` |
-| Lampiran | satu lampiran pada `report_a` dan satu lampiran pada komentar |
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas internal laporan. |
+| `ticket_number` | string(40), unique | Nomor tiket untuk pengguna. |
+| `reporter_id` | FK `users`, restrict delete | Penghuni pelapor. |
+| `building_id` | FK `buildings`, restrict delete | Lokasi kejadian. |
+| `room_id` | FK `rooms`, nullable | Kamar lokasi kejadian. |
+| `category_id` | FK `categories`, restrict delete | Kategori kendala. |
+| `title` | string | Judul laporan. |
+| `description` | text | Uraian kendala. |
+| `location_type` | string(20) | `room`, `common_area`, atau `building`. |
+| `location_description` | string, nullable | Detail lokasi area bersama/gedung. |
+| `visibility` | string(30), index, default `private` | `public_building` atau `participants`. |
+| `identity_visibility` | string(30), default `visible` | Aturan tampilan identitas pelapor. |
+| `impact_score` | unsigned tinyint, default 1 | Skor dampak. |
+| `urgency_score` | unsigned tinyint, default 1 | Skor urgensi. |
+| `safety_risk_score` | unsigned tinyint, default 0 | Skor risiko keselamatan. |
+| `priority` | string(20), index, default `normal` | `low`, `normal`, `high`, `critical`. |
+| `priority_score` | unsigned smallint, default 0 | Skor hasil asesmen. |
+| `status` | string(30), index, default `submitted` | Status workflow laporan. |
+| `estimated_response_at` | timestamp, nullable | Perkiraan mulai direspons/ditangani. |
+| `estimated_resolution_at` | timestamp, nullable | Perkiraan pekerjaan selesai. |
+| `estimate_note` | text, nullable | Catatan estimasi untuk penghuni. |
+| `resolved_at` | timestamp, nullable | Waktu petugas menyatakan selesai. |
+| `closed_at` | timestamp, nullable | Waktu laporan dikonfirmasi/ditutup. |
+| `retained_until` | timestamp, nullable | Batas retensi, dua tahun setelah ditutup. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-#### Matriks skenario
+Index tambahan: `building_id` + `visibility` dan `reporter_id` + `status`.
 
-| ID | Area | Pra-kondisi | Langkah uji | Hasil yang diharapkan |
-|---|---|---|---|---|
-| T0-01 | Akses laporan | `report_a` milik `resident_a` | Buka detail sebagai `resident_a` | Berhasil, HTTP 200. |
-| T0-02 | Akses laporan publik | Laporan `public_building` berada di Gedung A | Buka sebagai `resident_b` | Berhasil; identitas kamar tidak dibocorkan. |
-| T0-03 | Privasi antar-gedung | Laporan privat berada di Gedung A | Buka sebagai `resident_c` | Ditolak HTTP 403. |
-| T0-04 | Akses petugas aktif | `staff_a` memiliki assignment aktif | Buka detail dan halaman triase | Berhasil. |
-| T0-05 | Akses petugas non-assigned | `staff_b` tidak memiliki assignment aktif | Buka detail atau triase | Ditolak HTTP 403. |
-| T0-06 | Akses manajer | `manager_a` aktif | Buka detail dan triase | Berhasil tanpa bergantung pada assignment. |
-| T0-07 | Komentar peserta | Pengguna dapat melihat laporan dan status bukan `closed` | Kirim komentar teks valid | Redirect berhasil; baris `report_comments` tercipta dengan `user_id` yang benar. |
-| T0-08 | Komentar pada laporan tertutup | `report_a` berstatus `closed` | Kirim komentar sebagai pelapor atau manajer | Ditolak HTTP 403; komentar tidak tercipta. |
-| T0-09 | Validasi komentar | Pengguna berhak akses | Kirim body kosong atau lebih dari 5.000 karakter | Validasi gagal pada `body`; tidak ada komentar tersimpan. |
-| T0-10 | Akses lampiran | Lampiran terhubung ke `report_a` | Unduh sebagai pelapor, `staff_a`, dan manajer | Berhasil; nama file dan content type sesuai metadata. |
-| T0-11 | Lampiran tanpa akses | Lampiran laporan Gedung A | Unduh sebagai `resident_c` atau `staff_b` | Ditolak HTTP 403; file tidak dikirim. |
-| T0-12 | Status pekerjaan petugas | `report_a` berstatus `in_progress`, `staff_a` aktif | Petugas mengirim status `waiting_confirmation` dengan catatan | Berhasil; status berubah dan histori status tercatat. |
-| T0-13 | Konfirmasi penghuni | `report_a` berstatus `waiting_confirmation` | `resident_a` menekan “Konfirmasi selesai” | Status menjadi `closed`, `closed_at` terisi, dan histori `waiting_confirmation` → `closed` tercatat. |
-| T0-14 | Penutupan terlalu dini | Status laporan `assigned`, `submitted`, atau `in_progress` | Penghuni mencoba menutup laporan | Ditolak HTTP 403; status tetap. |
-| T0-15 | Penutupan oleh manajer | Status `waiting_confirmation` | `manager_a` menutup laporan | Berhasil; status menjadi `closed` dan histori mencatat manajer sebagai pelaku. |
-| T0-16 | Pembukaan kembali oleh penghuni | Status `closed`, pelapor tersedia | Pelapor mengirim alasan lalu membuka kembali | Status menjadi `reopened`; `closed_at` dan `retained_until` menjadi `NULL`. |
-| T0-17 | Pembukaan kembali oleh manajer | Status `closed` dan pelapor tidak dapat bertindak | Manajer mengirim alasan lalu membuka kembali | Berhasil; status menjadi `reopened` dan histori tercatat. |
-| T0-18 | Pembukaan kembali tanpa hak | Status `closed` | `resident_b` atau petugas mencoba membuka kembali | Ditolak HTTP 403; status tetap `closed`. |
-| T0-19 | Validasi alasan buka kembali | Status `closed` | Kirim alasan kosong | Validasi gagal pada `note`; status tetap. |
-| T0-20 | Prioritas oleh petugas aktif | `staff_a` aktif dan ter-assign | Ubah prioritas dengan alasan | Berhasil; `priority` dan histori prioritas berubah. |
-| T0-21 | Prioritas tanpa alasan | Prioritas baru berbeda dari nilai lama | Petugas/manajer mengirim perubahan tanpa alasan | Validasi bisnis gagal pada `reason`; prioritas tidak berubah. |
-| T0-22 | Prioritas petugas non-assigned | `staff_b` tidak ter-assign | Ubah prioritas | Ditolak HTTP 403; histori tidak tercipta. |
-| T0-23 | Prioritas penghuni | Penghuni bukan manajer/petugas | Akses endpoint triase | Ditolak HTTP 403. |
-| T0-24 | Retensi laporan | Laporan berhasil ditutup pada waktu `T` | Periksa `retained_until` | Nilai sama dengan `T + 2 tahun`. |
-| T0-25 | Retensi lampiran laporan | Lampiran langsung terhubung ke laporan | Tutup laporan lalu periksa lampiran | `attachments.retained_until` sama dengan batas retensi laporan. |
-| T0-26 | Retensi lampiran komentar | Lampiran terhubung ke komentar | Tutup laporan lalu periksa lampiran komentar | Batas retensi ikut diisi dua tahun setelah penutupan. |
-| T0-27 | Reset retensi saat reopen | Laporan dan lampiran sudah memiliki retensi | Buka kembali laporan | `retained_until` laporan dan lampiran kembali `NULL`. |
-| T0-28 | Transisi ilegal | Laporan `assigned` | Petugas mencoba langsung ke `waiting_confirmation` tanpa `in_progress` | Ditolak; status tetap `assigned`. |
-| T0-29 | Histori lengkap | Jalankan alur assigned → in_progress → waiting_confirmation → closed → reopened | Periksa histori | Setiap perubahan memiliki status asal, tujuan, pelaku, waktu, dan catatan yang benar. |
-| T0-30 | Regresi login | Akun aktif dan tidak aktif tersedia | Login dengan kedua akun | Akun aktif berhasil; akun tidak aktif ditolak dan tetap guest. |
+`report_assignments` memisahkan assignment dari laporan agar histori
+penugasan tetap tersedia dan assignment aktif dapat dicabut.
 
-#### Kriteria penerimaan
+### `report_assignments`
 
-Implementasi Tahap 0 dinyatakan lulus apabila:
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas assignment. |
+| `report_id` | FK `reports`, cascade delete | Laporan yang ditugaskan. |
+| `service_unit_id` | FK `service_units`, restrict delete | Unit layanan. |
+| `staff_id` | FK `users`, nullable | Petugas yang ditugaskan. |
+| `assigned_by` | FK `users`, nullable | Manajer/pengguna yang membuat assignment. |
+| `assigned_at` | timestamp | Waktu assignment. |
+| `unassigned_at` | timestamp, nullable | Waktu assignment dicabut. Null berarti aktif. |
+| `note` | text, nullable | Catatan assignment. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-1. T0-01 sampai T0-30 menghasilkan hasil yang diharapkan.
-2. Tidak ada endpoint sensitif yang dapat dilewati dengan mengganti ID laporan
-   atau ID lampiran.
-3. Setiap perubahan status, prioritas, penutupan, dan pembukaan kembali memiliki
-   histori yang dapat ditelusuri.
-4. Status `closed` hanya dapat dicapai dari `waiting_confirmation`.
-5. Tidak ada komentar atau lampiran baru yang dapat ditambahkan ke laporan
-   tertutup.
-6. Nilai retensi laporan dan seluruh lampiran konsisten dan di-reset ketika
-   laporan dibuka kembali.
+Index: `report_id` + `unassigned_at` dan `staff_id` + `unassigned_at`.
 
-#### Pemetaan ke pengujian otomatis
+### `report_comments`
 
-Skenario berikut sebaiknya menjadi method PHPUnit di
-`tests/Feature/ReportTest.php`:
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas komentar. |
+| `report_id` | FK `reports`, cascade delete | Laporan terkait. |
+| `user_id` | FK `users`, restrict delete | Pengirim komentar. |
+| `body` | text | Isi komentar. |
+| `visibility` | string(30), default `participants` | Cakupan pembaca komentar. |
+| `deleted_by` | FK `users`, nullable | Pengguna yang menghapus secara soft delete. |
+| `deleted_at` | timestamp, nullable | Waktu soft delete. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
 
-- T0-01–T0-06: policy `view` dan `triage`;
-- T0-07–T0-09: endpoint komentar dan validasi;
-- T0-10–T0-11: policy dan endpoint lampiran;
-- T0-12, T0-14, T0-28: transisi petugas;
-- T0-13, T0-15–T0-19: close/reopen dan policy;
-- T0-20–T0-23: perubahan prioritas;
-- T0-24–T0-27: retensi laporan/lampiran;
-- T0-29: histori status;
-- T0-30: `tests/Feature/AuthenticationTest.php`.
+Index: `report_id` + `created_at`.
 
-Perintah validasi utama:
+`report_comments` digunakan untuk percakapan pada laporan. Komentar yang
+terhapus tidak ditampilkan oleh model aplikasi.
+
+### `attachments`
+
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas lampiran. |
+| `report_id` | FK `reports`, nullable, cascade delete | Laporan langsung terkait. |
+| `comment_id` | FK `report_comments`, nullable, cascade delete | Komentar terkait. |
+| `uploaded_by` | FK `users`, restrict delete | Pengunggah. |
+| `storage_path` | string | Path internal pada storage. |
+| `original_name` | string | Nama file asli untuk tampilan/download. |
+| `mime_type` | string(100) | MIME type file. |
+| `size` | unsigned bigint | Ukuran byte. |
+| `checksum` | string(64) | Checksum SHA-256. |
+| `retained_until` | timestamp, nullable | Batas retensi lampiran. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
+
+Satu lampiran terkait ke laporan atau komentar. Endpoint download wajib
+memeriksa akses laporan induknya.
+
+### `report_status_histories`
+
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas histori. |
+| `report_id` | FK `reports`, cascade delete | Laporan terkait. |
+| `from_status` | string(30), nullable | Status sebelumnya. |
+| `to_status` | string(30) | Status tujuan. |
+| `changed_by` | FK `users`, nullable | Pelaku perubahan. |
+| `note` | text, nullable | Catatan/alasan perubahan. |
+| `created_at`, `updated_at` | timestamps | Waktu perubahan. |
+
+Index: `report_id` + `created_at`.
+
+### `report_priority_histories`
+
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas histori. |
+| `report_id` | FK `reports`, cascade delete | Laporan terkait. |
+| `old_priority` | string(20), nullable | Prioritas sebelumnya. |
+| `new_priority` | string(20) | Prioritas baru. |
+| `score` | unsigned smallint | Skor saat perubahan. |
+| `changed_by` | FK `users`, nullable | Pelaku perubahan. |
+| `reason` | text, nullable | Alasan perubahan. |
+| `created_at`, `updated_at` | timestamps | Waktu perubahan. |
+
+Index: `report_id` + `created_at`.
+
+### `notifications`
+
+| Atribut | Tipe/aturan | Keterangan |
+|---|---|---|
+| `id` | bigint, PK | Identitas notifikasi. |
+| `user_id` | FK `users`, cascade delete | Penerima. |
+| `type` | string | Jenis notifikasi. |
+| `data` | JSON | Payload notifikasi. |
+| `read_at` | timestamp, nullable | Waktu dibaca. |
+| `created_at`, `updated_at` | timestamps | Audit waktu. |
+
+Index: `user_id` + `read_at`.
+
+### Tabel pivot
+
+| Tabel | Atribut | Fungsi |
+|---|---|---|
+| `service_unit_building` | `service_unit_id`, `building_id` | Cakupan gedung unit layanan. Primary key gabungan. |
+| `user_service_unit` | `user_id`, `service_unit_id` | Unit layanan yang dapat ditangani petugas. Primary key gabungan. |
+| `user_building` | `user_id`, `building_id` | Cakupan gedung petugas. Primary key gabungan. |
+
+### Tabel bawaan framework
+
+Laravel juga memiliki tabel pendukung `password_reset_tokens`, `sessions`,
+`cache`, `cache_locks`, `jobs`, `job_batches`, dan `failed_jobs`. Tabel-tabel
+ini bukan entitas bisnis dan mengikuti migration bawaan Laravel.
+
+Saat laporan ditutup, `retained_until` pada laporan dan lampiran diisi dua
+tahun setelah `closed_at`. Saat laporan dibuka kembali, nilai retensi
+dikosongkan.
+
+## Status implementasi
+
+| Tahap | Status | Keterangan |
+|---|---|---|
+| 0. Kebijakan akses dan alur | ✅ Selesai untuk aturan inti | Policy terpusat, pembatasan status, close/reopen, prioritas, retensi, dan histori sudah tersedia. |
+| 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, dashboard dasar, dan migration tersedia. |
+| 2. Tiket inti | ✅ Selesai untuk cakupan MVP | Pembuatan laporan, lokasi, visibilitas, assignment, lampiran, validasi akses, estimasi, dan histori tersedia. |
+| 3. Triase dan prioritas | 🟢 MVP selesai | Skor prioritas, triase, assignment, estimasi, dan transisi status tersedia; antrean/SLA masih perlu pengembangan. |
+| 4. Percakapan dan notifikasi | 🟡 Dasar tersedia | Komentar teks dan endpoint komentar tersedia; notifikasi, attachment komentar, dan status dibaca belum lengkap. |
+| 5. Fitur komunitas | 🔴 Belum dimulai | Feed publik khusus, “saya juga mengalami”, moderasi, dan duplikasi belum tersedia. |
+| 6. Migrasi data lama | 🔴 Belum dimulai | Importer, pemetaan legacy, rekonsiliasi, dan mode read-only belum tersedia. |
+
+### Implementasi yang sudah tersedia
+
+- 17 route web untuk autentikasi, dashboard, laporan, triase, komentar,
+  penutupan/pembukaan kembali, assignment, dan akses lampiran.
+- Policy `ReportPolicy`, `ReportCommentPolicy`, dan `AttachmentPolicy`.
+- Validasi upload maksimal lima gambar, MIME gambar, dan 10 MB per file.
+- Validasi kamar terhadap gedung penghuni.
+- Retensi dua tahun untuk laporan dan lampiran.
+- Histori status dan histori perubahan prioritas.
+- Tampilan estimasi respons, estimasi selesai, dan catatan estimasi.
+- PHPUnit menggunakan SQLite in-memory agar tidak bergantung pada MySQL lokal.
+
+## Skenario pengujian Tahap 0 dan Tahap 2
+
+Gunakan data uji: dua gedung, dua penghuni dalam gedung yang sama, satu
+penghuni gedung lain, satu manajer, satu petugas assigned, satu petugas
+non-assigned, satu laporan utama, dan lampiran pada laporan.
+
+| ID | Skenario | Hasil yang diharapkan |
+|---|---|---|
+| T-01 | Resident membuka laporan miliknya | HTTP 200. |
+| T-02 | Resident satu gedung membuka laporan publik | Berhasil tanpa nomor kamar pelapor. |
+| T-03 | Resident gedung lain membuka laporan privat | HTTP 403. |
+| T-04 | Staff assigned membuka detail dan triase | Berhasil. |
+| T-05 | Staff non-assigned membuka laporan | HTTP 403. |
+| T-06 | Manager membuka dan mentriase laporan | Berhasil. |
+| T-07 | Pengguna berhak mengirim komentar | Komentar tersimpan dengan user yang benar. |
+| T-08 | Komentar pada laporan tertutup | HTTP 403 dan tidak tersimpan. |
+| T-09 | Pengguna berhak mengunduh lampiran | File dikirim sesuai metadata. |
+| T-10 | Pengguna tanpa akses mengunduh lampiran | HTTP 403. |
+| T-11 | Staff mengubah `in_progress` menjadi `waiting_confirmation` | Status dan histori berubah. |
+| T-12 | Resident menutup `waiting_confirmation` | Status `closed`, waktu tutup, dan retensi terisi. |
+| T-13 | Manager menutup `waiting_confirmation` | Berhasil dan pelaku tercatat. |
+| T-14 | Resident atau manager membuka laporan tertutup | Status `reopened`; retensi dikosongkan. |
+| T-15 | Pengguna tanpa hak membuka kembali | HTTP 403. |
+| T-16 | Staff assigned mengubah prioritas dengan alasan | Prioritas dan histori berubah. |
+| T-17 | Perubahan prioritas tanpa alasan | Ditolak; prioritas tetap. |
+| T-18 | Perubahan prioritas pada `waiting_confirmation` atau `closed` | HTTP 403. |
+| T-19 | Detail laporan memiliki data estimasi | Estimasi respons, selesai, dan catatan tampil. |
+| T-20 | Staff mencoba melewati transisi status | Ditolak; status tetap. |
+| T-21 | Lampiran laporan ditutup | Retensi lampiran sama dengan retensi laporan. |
+| T-22 | Login akun aktif dan tidak aktif | Akun aktif berhasil; akun tidak aktif ditolak. |
+
+Kriteria penerimaan:
+
+1. Tidak ada endpoint sensitif yang dapat dilewati dengan mengganti ID.
+2. Setiap status dan prioritas memiliki histori pelaku dan waktu.
+3. `closed` hanya dicapai dari `waiting_confirmation`.
+4. Laporan tertutup tidak menerima komentar baru.
+5. Retensi laporan dan lampiran konsisten serta di-reset saat reopen.
+
+Perintah validasi:
 
 ```text
 php artisan test
 ```
 
-Perintah tersebut harus dijalankan dengan database testing terisolasi, bukan
-database development atau production.
+Suite terakhir: **28 test lulus, 110 assertion lulus**.
 
-## Tahap 1 — Fondasi Laravel
+## Backlog berikutnya
 
-**Status: ✅ Selesai untuk MVP.**
+### Tahap 3: antrean dan SLA
 
-Tidak perlu mengulang migration fondasi. Yang tersisa adalah pengerasan:
+- Dashboard antrean berdasarkan gedung, unit, status, prioritas, dan usia.
+- Filter kerja untuk manajer dan petugas.
+- Histori estimasi dan alasan perubahan estimasi.
+- Notifikasi ketika estimasi terlewati.
 
-- tambahkan test untuk role pada setiap route sensitif;
-- pindahkan pemeriksaan akses yang tersebar di controller ke Policy/Gate;
-- lengkapi dashboard dengan metrik dan daftar kerja berdasarkan role;
-- pastikan akun staf memiliki cakupan gedung dan unit layanan yang konsisten.
+### Tahap 4: percakapan dan notifikasi
 
-## Tahap 2 — Tiket inti
+- Lampiran pada komentar.
+- Notifikasi in-app dan status dibaca.
+- Notifikasi kepada pelapor saat status, assignment, atau estimasi berubah.
+- Email setelah notifikasi in-app stabil.
+- Polling atau WebSocket hanya bila diperlukan.
 
-**Status: 🟢 Hampir selesai.**
+### Tahap 5: komunitas
 
-Fitur inti sudah dapat membuat laporan dengan nomor tiket, kategori dinamis,
-lokasi, visibilitas, prioritas awal, penugasan, histori, dan lampiran gambar.
+- Feed laporan publik per gedung.
+- “Saya juga mengalami”.
+- Penandaan duplikat.
+- Moderasi dan pelaporan konten.
 
-Sebelum tahap ini ditutup:
+### Tahap 6: migrasi legacy
 
-- tambahkan route untuk mengunduh/menampilkan lampiran dengan pemeriksaan akses;
-- validasi `room_id` terhadap gedung secara eksplisit di level request/database;
-- tangani kegagalan penyimpanan file agar transaksi database tidak meninggalkan
-  data lampiran yang tidak lengkap;
-- tambahkan test untuk upload, akses lampiran, nomor tiket bersamaan, dan
-  penghapusan/retensi file.
-
-## Tahap 3 — Triase dan prioritas
-
-**Status: 🟢 MVP selesai.**
-
-Asesmen laporan menghasilkan `priority_score` dan prioritas otomatis. Manajer
-dapat mengubah prioritas dengan alasan, mengatur estimasi, memilih unit layanan
-dan staf, sedangkan staf dapat mengubah status melalui transisi yang dibatasi.
-
-Pekerjaan penutupan tahap:
-
-- buat antrean kerja nyata untuk staf dan manajer, bukan hanya daftar laporan;
-- tampilkan filter gedung, unit layanan, status, prioritas, dan usia laporan;
-- pisahkan aksi transisi manajer dan staf secara eksplisit;
-- tambahkan test negatif untuk setiap transisi dan assignment lintas gedung;
-- definisikan SLA serta notifikasi ketika estimasi terlewati.
-
-## Tahap 4 — Percakapan dan notifikasi
-
-**Status: 🔴 Belum dimulai (model dasar tersedia).**
-
-Migration dan relasi `report_comments`/`attachments` sudah menjadi fondasi,
-tetapi route dan UI komentar belum tersedia. Implementasikan berurutan:
-
-1. endpoint dan form komentar teks dengan izin berdasarkan visibilitas laporan;
-2. balasan penghuni, staf, dan manajer pada thread laporan;
-3. lampiran yang terkait komentar, bukan hanya laporan;
-4. notifikasi dalam aplikasi dan status sudah dibaca;
-5. email setelah alur stabil;
-6. polling atau WebSocket hanya bila kebutuhan real-time sudah terbukti.
-
-## Tahap 5 — Fitur komunitas
-
-**Status: 🔴 Belum dimulai.**
-
-Kerjakan setelah akses komentar stabil: feed laporan publik per gedung,
-“saya juga mengalami”, penandaan duplikat, moderasi, pelaporan konten, dan
-penyamaran identitas untuk kategori sensitif. Fitur ini tidak boleh membuka
-laporan `participants` atau data kamar kepada penghuni lain.
-
-## Tahap 6 — Migrasi data lama
-
-**Status: 🔴 Belum dimulai.**
-
-Buat command/importer idempotent dan jalankan di salinan database terlebih
-dahulu:
+Buat importer idempotent di salinan database:
 
 - `penghuni` menjadi `users`;
-- `teknisi` dan `manajer` menjadi user dengan role;
-- kategori lama dipetakan ke kategori baru;
+- `teknisi` dan `manajer` menjadi user berdasarkan role;
+- kategori lama dipetakan ke `categories`;
 - `pengaduan` menjadi `reports`;
-- `bukti_foto` dan `bukti_penyelesaian` menjadi `attachments`;
-- `penanganan_dini` dan `komentar_penyelesaian` menjadi komentar historis.
+- bukti lama menjadi `attachments`;
+- teks penanganan menjadi komentar historis.
 
-Tambahkan penanda `source = legacy`, laporan jumlah baris yang berhasil/gagal,
-rekonsiliasi nomor tiket, dan validasi akses setelah import. Aplikasi lama
-dipertahankan read-only sampai hasil migrasi disetujui.
+Tambahkan penanda sumber legacy, laporan baris gagal, rekonsiliasi nomor tiket,
+dan validasi akses sebelum aplikasi lama dimatikan.
 
-## Urutan kerja yang disarankan sekarang
+## Catatan operasional
 
-1. Perbaiki environment test dan pastikan suite lulus.
-2. Selesaikan Policy/Gate serta test otorisasi.
-3. Tutup Tahap 2 dengan akses lampiran yang aman dan test upload.
-4. Sempurnakan antrean/SLA pada Tahap 3.
-5. Implementasikan komentar teks dan notifikasi in-app pada Tahap 4.
-6. Setelah data baru stabil, kerjakan importer Tahap 6 sebelum fitur komunitas
-   yang lebih luas.
-
----
-
-# 9. Perbaikan penting sebelum migrasi
-
-Beberapa hal pada sistem lama sebaiknya tidak dibawa apa adanya:
-
-1. Jangan menggunakan nomor HP sebagai bagian utama komunikasi sistem.
-2. Jangan menampilkan data penghuni lain lebih banyak dari yang diperlukan.
-3. Jangan menyimpan komentar sebagai kolom tetap pada tabel laporan.
-4. Jangan menggunakan ENUM untuk kategori yang akan sering berubah.
-5. Jangan mengandalkan ekstensi file untuk validasi upload.
-6. Jangan membuat nomor tiket dengan `COUNT(*) + 1`.
-7. Jangan membolehkan update status tanpa validasi transisi.
-8. Jangan menghapus lampiran fisik tanpa memperbarui database.
-9. Jangan menganggap laporan `Selesai` selalu benar-benar selesai—tambahkan konfirmasi penghuni atau mekanisme buka kembali.
-10. Jangan menambahkan real-time chat sebelum model akses, moderasi, dan penyimpanan lampiran sudah benar.
-
----
-
-# 10. Rekomendasi MVP
-
-Agar cakupan tidak melebar terlalu cepat, versi pertama framework sebaiknya hanya berisi:
-
-- login dan role;
-- data gedung dan kamar;
-- kategori dinamis;
-- pembuatan laporan;
-- lokasi dan visibilitas;
-- prioritas otomatis;
-- status dan penugasan;
-- komentar teks antara penghuni dan petugas;
-- lampiran gambar;
-- riwayat status;
-- dashboard teknisi dan manajer;
-- forum laporan umum sederhana;
-- audit log dasar.
-
-Tunda terlebih dahulu:
-
-- video berukuran besar;
-- voice call;
-- chat global seperti WhatsApp;
-- aplikasi mobile;
-- AI otomatis;
-- microservices;
-- sistem rating yang kompleks;
-- integrasi WhatsApp resmi.
-
----
-
-## Rekomendasi akhir
-
-Gunakan **Laravel sebagai fondasi baru**, tetapi lakukan migrasi secara bertahap. Pertahankan konsep ticketing, role, pembagian berdasarkan gedung, alur teknisi, dan bukti penyelesaian dari sistem lama. Ganti model satu tabel pengaduan menjadi model laporan dengan komentar, lampiran, lokasi, visibilitas, prioritas, penugasan, dan histori.
-
-Prioritas terpenting bukan tampilan atau real-time chat, melainkan:
-
-1. desain data;
-2. kontrol akses dan privasi;
-3. alur status;
-4. validasi lampiran;
-5. audit trail;
-6. mekanisme triase prioritas;
-7. pemisahan laporan publik dan privat.
-
-Jika fondasi ini benar, fitur forum, percakapan seperti WhatsApp, notifikasi real-time, aplikasi mobile, dan laporan analitik dapat ditambahkan tanpa harus merombak sistem lagi.
+- Jalankan migration sebelum memakai fitur yang memerlukan kolom baru:
+  `php artisan migrate`.
+- Jangan menjalankan test terhadap database development atau production.
+- Pertahankan aplikasi lama read-only sampai migrasi data tervalidasi.
+- Jangan menambahkan real-time chat, video besar, aplikasi mobile, AI, atau
+  microservices sebelum alur inti stabil.

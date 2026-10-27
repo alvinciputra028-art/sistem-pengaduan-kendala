@@ -26,7 +26,7 @@ class ReportTriageController extends Controller
 
     public function edit(Request $request, Report $report): View
     {
-        $this->authorize('updatePriority', $report);
+        $this->authorize('triage', $report);
         $report->load(['category', 'building', 'assignments.staff', 'assignments.serviceUnit']);
 
         $serviceUnits = ServiceUnit::query()
@@ -50,7 +50,7 @@ class ReportTriageController extends Controller
 
     public function update(Request $request, Report $report): RedirectResponse
     {
-        $this->authorizeTriage($request, $report);
+        $this->authorize('updatePriority', $report);
         $data = $request->validate([
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'critical'])],
             'reason' => ['nullable', 'string', 'max:2000'],

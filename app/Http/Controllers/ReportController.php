@@ -53,7 +53,13 @@ class ReportController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:10000'],
             'location_type' => ['required', Rule::in(['room', 'common_area', 'building'])],
-            'room_id' => ['nullable', 'integer'],
+            'room_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('rooms', 'id')->where(
+                    fn ($query) => $query->where('building_id', $user->building_id),
+                ),
+            ],
             'location_description' => ['nullable', 'string', 'max:255'],
             'visibility' => ['required', Rule::in(['public_building', 'participants'])],
             'identity_visibility' => ['required', Rule::in(['visible', 'anonymous'])],
@@ -134,6 +140,10 @@ class ReportController extends Controller
 
             foreach ($data['attachments'] ?? [] as $file) {
                 $path = $file->store('reports', 'local');
+                if ($path === false) {
+                    throw new \RuntimeException('Bukti laporan gagal disimpan.');
+                }
+
                 $report->attachments()->create([
                     'uploaded_by' => $user->id,
                     'storage_path' => $path,

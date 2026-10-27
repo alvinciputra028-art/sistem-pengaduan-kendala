@@ -20,6 +20,7 @@
         <p><strong>{{ $report->title }}</strong></p>
         <p>Status saat ini: {{ $report->status }} · Prioritas saat ini: {{ $report->priority }}</p>
 
+        @can('updatePriority', $report)
         <form method="POST" action="{{ route('reports.triage.update', $report) }}">
             @csrf
             @method('PATCH')
@@ -51,6 +52,9 @@
             <br>
             <button type="submit">Simpan triase</button>
         </form>
+        @else
+            <p role="status">Prioritas dan estimasi tidak dapat diubah setelah pekerjaan menunggu konfirmasi penghuni atau laporan ditutup.</p>
+        @endcan
 
         @if (auth()->user()->role === 'staff')
             <h2>Aksi penanganan</h2>

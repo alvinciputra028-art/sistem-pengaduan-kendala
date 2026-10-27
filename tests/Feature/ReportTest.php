@@ -374,6 +374,41 @@ class ReportTest extends TestCase
         ]);
     }
 
+    public function test_priority_cannot_be_changed_after_work_is_waiting_for_confirmation(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $report = $this->makeReport($building, $room, $category, 'waiting_confirmation');
+
+        $this->actingAs($manager)->patch(route('reports.triage.update', $report), [
+            'priority' => 'critical',
+            'reason' => 'Tidak boleh diubah setelah pekerjaan selesai.',
+        ])->assertForbidden();
+
+        $this->assertSame('normal', $report->fresh()->priority);
+        $this->assertDatabaseMissing('report_priority_histories', [
+            'report_id' => $report->id,
+            'new_priority' => 'critical',
+        ]);
+    }
+
+    public function test_report_detail_shows_available_estimates_to_the_reporter(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $report->update([
+            'estimated_response_at' => '2026-10-28 09:00:00',
+            'estimated_resolution_at' => '2026-10-29 17:30:00',
+            'estimate_note' => 'Petugas akan menghubungi penghuni sebelum pemeriksaan.',
+        ]);
+
+        $this->actingAs($report->reporter)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('Estimasi respons: 28/10/2026 09:00')
+            ->assertSee('Estimasi selesai: 29/10/2026 17:30')
+            ->assertSee('Petugas akan menghubungi penghuni sebelum pemeriksaan.');
+    }
+
     public function test_staff_cannot_skip_status_transition(): void
     {
         [$building, $room, $category] = $this->referenceData();
