@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Report;
-use Illuminate\Database\Eloquent\Builder;
+use App\Policies\ReportPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +16,7 @@ class ReportController extends Controller
 {
     public function index(Request $request): View
     {
-        $reports = $this->visibleReports($request->user())
+        $reports = app(ReportPolicy::class)->visibleQuery($request->user())
             ->with(['category', 'building', 'reporter'])
             ->latest()
             ->paginate(10);
@@ -153,7 +153,7 @@ class ReportController extends Controller
     public function show(Request $request, Report $report): View
     {
         $viewer = $request->user();
-        abort_unless($this->visibleReports($viewer)->whereKey($report->id)->exists(), 403);
+        $this->authorize('view', $report);
 
         $report->load([
             'category',
@@ -185,28 +185,6 @@ class ReportController extends Controller
             'canSeeReporterRoom',
             'activeAssignment',
         ));
-    }
-
-    private function visibleReports($user): Builder
-    {
-        return Report::query()->where(function (Builder $query) use ($user): void {
-            if ($user->role === 'manager') {
-                return;
-            }
-
-            if ($user->role === 'staff') {
-                $query->whereHas('assignments', fn (Builder $assignment) => $assignment
-                    ->where('staff_id', $user->id)
-                    ->whereNull('unassigned_at'));
-                return;
-            }
-
-            $query->where('reporter_id', $user->id)
-                ->orWhere(function (Builder $public) use ($user): void {
-                    $public->where('building_id', $user->building_id)
-                        ->where('visibility', 'public_building');
-                });
-        });
     }
 
     private function makeTicketNumber(): string

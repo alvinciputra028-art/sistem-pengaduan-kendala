@@ -56,7 +56,7 @@
             <h2>Aksi penanganan</h2>
             @foreach ([
                 'in_progress' => 'Mulai tangani',
-                'resolved' => 'Tandai selesai',
+                'waiting_confirmation' => 'Tandai menunggu konfirmasi penghuni',
             ] as $status => $label)
                 @if (in_array($status, $availableTransitions, true))
                     <form method="POST" action="{{ route('reports.triage.status', $report) }}">

@@ -44,4 +44,11 @@ class ReportComment extends Model
     {
         return $this->hasMany(Attachment::class, 'comment_id');
     }
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('not_deleted', function ($query): void {
+            $query->whereNull('deleted_at');
+        });
+    }
 }

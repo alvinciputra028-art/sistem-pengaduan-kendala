@@ -18,15 +18,15 @@ class ReportTriageController extends Controller
         'submitted' => ['triaged', 'assigned'],
         'triaged' => ['assigned', 'in_progress'],
         'assigned' => ['in_progress'],
-        'in_progress' => ['resolved'],
-        'resolved' => ['closed', 'reopened'],
+        'in_progress' => ['waiting_confirmation'],
+        'waiting_confirmation' => [],
         'reopened' => ['triaged', 'assigned', 'in_progress'],
         'closed' => ['reopened'],
     ];
 
     public function edit(Request $request, Report $report): View
     {
-        $this->authorizeTriage($request, $report);
+        $this->authorize('updatePriority', $report);
         $report->load(['category', 'building', 'assignments.staff', 'assignments.serviceUnit']);
 
         $serviceUnits = ServiceUnit::query()
@@ -76,8 +76,8 @@ class ReportTriageController extends Controller
                 'estimate_note' => $data['estimate_note'] ?? null,
                 'estimated_response_at' => $data['estimated_response_at'] ?? null,
                 'estimated_resolution_at' => $data['estimated_resolution_at'] ?? null,
-                'resolved_at' => in_array($newStatus, ['resolved', 'closed'], true) ? now() : null,
-                'closed_at' => $newStatus === 'closed' ? now() : null,
+                'resolved_at' => $newStatus === 'waiting_confirmation' ? now() : null,
+                'closed_at' => null,
             ]);
 
             if ($priorityChanged) {
@@ -109,7 +109,7 @@ class ReportTriageController extends Controller
         abort_unless($request->user()->role === 'staff', 403);
 
         $data = $request->validate([
-            'status' => ['required', Rule::in(['in_progress', 'resolved'])],
+            'status' => ['required', Rule::in(['in_progress', 'resolved', 'waiting_confirmation'])],
             'note' => ['required', 'string', 'max:2000'],
         ]);
         $allowedStatuses = self::TRANSITIONS[$report->status] ?? [];
@@ -119,7 +119,7 @@ class ReportTriageController extends Controller
             $oldStatus = $report->status;
             $report->update([
                 'status' => $data['status'],
-                'resolved_at' => $data['status'] === 'resolved' ? now() : null,
+                'resolved_at' => $data['status'] === 'waiting_confirmation' ? now() : null,
             ]);
             $report->statusHistories()->create([
                 'from_status' => $oldStatus,
@@ -134,6 +134,7 @@ class ReportTriageController extends Controller
 
     public function assign(Request $request, Report $report): RedirectResponse
     {
+        $this->authorize('triage', $report);
         abort_unless($request->user()->role === 'manager', 403);
 
         $data = $request->validate([
@@ -184,17 +185,6 @@ class ReportTriageController extends Controller
 
     private function authorizeTriage(Request $request, Report $report): void
     {
-        if ($request->user()->role === 'manager') {
-            return;
-        }
-
-        abort_unless(
-            $request->user()->role === 'staff'
-            && $report->assignments()
-                ->where('staff_id', $request->user()->id)
-                ->whereNull('unassigned_at')
-                ->exists(),
-            403,
-        );
+        $this->authorize('triage', $report);
     }
 }

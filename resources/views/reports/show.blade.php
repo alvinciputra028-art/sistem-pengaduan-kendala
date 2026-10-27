@@ -12,6 +12,20 @@
         <h1>{{ $report->title }}</h1>
         <p><strong>{{ $report->ticket_number }}</strong></p>
         <p>Status: {{ $report->status }} · Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
+        @can('close', $report)
+            <form method="POST" action="{{ route('reports.close', $report) }}">
+                @csrf
+                <button type="submit">Konfirmasi selesai dan tutup laporan</button>
+            </form>
+        @endcan
+        @can('reopen', $report)
+            <form method="POST" action="{{ route('reports.reopen', $report) }}">
+                @csrf
+                <label for="reopen-note">Alasan membuka kembali</label>
+                <input id="reopen-note" name="note" required maxlength="2000">
+                <button type="submit">Buka kembali laporan</button>
+            </form>
+        @endcan
         <p>Kategori: {{ $report->category->name }}</p>
         <h2>Pelapor</h2>
         @if ($canSeeReporterIdentity)
@@ -36,10 +50,22 @@
         <div>{{ $report->description }}</div>
         <h2>Bukti</h2>
         @forelse ($report->attachments as $attachment)
-            <p>{{ $attachment->original_name }} ({{ number_format($attachment->size / 1024, 1) }} KB)</p>
+            <p><a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a> ({{ number_format($attachment->size / 1024, 1) }} KB)</p>
         @empty
             <p>Tidak ada bukti.</p>
         @endforelse
+        @can('comment', $report)
+            <h2>Komentar</h2>
+            @foreach ($report->comments as $comment)
+                <p><strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}</p>
+            @endforeach
+            <form method="POST" action="{{ route('reports.comments.store', $report) }}">
+                @csrf
+                <label for="comment-body">Komentar</label>
+                <textarea id="comment-body" name="body" required maxlength="5000"></textarea>
+                <button type="submit">Kirim komentar</button>
+            </form>
+        @endcan
         <h2>Riwayat status</h2>
         <ul>
             @foreach ($report->statusHistories as $history)

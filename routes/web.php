@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportCommentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTriageController;
+use App\Http\Controllers\ReportWorkflowController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -29,6 +32,12 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/reports', [ReportController::class, 'store'])
         ->middleware('role:resident')
         ->name('reports.store');
+    Route::post('/reports/{report}/comments', [ReportCommentController::class, 'store'])
+        ->name('reports.comments.store');
+    Route::post('/reports/{report}/close', [ReportWorkflowController::class, 'close'])
+        ->name('reports.close');
+    Route::post('/reports/{report}/reopen', [ReportWorkflowController::class, 'reopen'])
+        ->name('reports.reopen');
     Route::get('/reports/{report}/triage', [ReportTriageController::class, 'edit'])
         ->name('reports.triage.edit');
     Route::patch('/reports/{report}/triage', [ReportTriageController::class, 'update'])
@@ -37,5 +46,7 @@ Route::middleware('auth')->group(function (): void {
         ->name('reports.triage.status');
     Route::post('/reports/{report}/assignments', [ReportTriageController::class, 'assign'])
         ->name('reports.assignments.store');
+    Route::get('/attachments/{attachment}', [AttachmentController::class, 'show'])
+        ->name('attachments.show');
     Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show');
 });

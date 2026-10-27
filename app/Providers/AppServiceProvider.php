@@ -2,6 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Attachment;
+use App\Models\Report;
+use App\Models\ReportComment;
+use App\Policies\AttachmentPolicy;
+use App\Policies\ReportCommentPolicy;
+use App\Policies\ReportPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::policy(Report::class, ReportPolicy::class);
+        Gate::policy(ReportComment::class, ReportCommentPolicy::class);
+        Gate::policy(Attachment::class, AttachmentPolicy::class);
     }
 }

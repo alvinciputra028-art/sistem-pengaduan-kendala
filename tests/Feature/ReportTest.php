@@ -399,7 +399,7 @@ class ReportTest extends TestCase
         $this->assertSame('assigned', $report->fresh()->status);
     }
 
-    public function test_staff_can_only_move_from_assigned_to_in_progress_and_then_resolved(): void
+    public function test_staff_can_only_move_from_assigned_to_in_progress_and_then_waiting_confirmation(): void
     {
         [$building, $room, $category] = $this->referenceData();
         $manager = User::factory()->create(['role' => 'manager']);
@@ -428,15 +428,70 @@ class ReportTest extends TestCase
         ])->assertRedirect(route('reports.triage.edit', $report));
 
         $this->actingAs($staff)->post(route('reports.triage.status', $report), [
-            'status' => 'resolved',
+            'status' => 'waiting_confirmation',
             'note' => 'Kendala sudah ditangani.',
         ])->assertRedirect(route('reports.triage.edit', $report));
 
-        $this->assertSame('resolved', $report->fresh()->status);
+        $this->assertSame('waiting_confirmation', $report->fresh()->status);
         $this->assertDatabaseMissing('report_status_histories', [
             'report_id' => $report->id,
             'to_status' => 'waiting_reporter',
         ]);
+    }
+
+    public function test_reporter_can_close_waiting_report_and_retention_is_two_years(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'waiting_confirmation');
+
+        $this->actingAs($report->reporter)->post(route('reports.close', $report))
+            ->assertRedirect(route('reports.show', $report));
+
+        $closed = $report->fresh();
+        $this->assertSame('closed', $closed->status);
+        $this->assertNotNull($closed->closed_at);
+        $this->assertEquals(
+            $closed->closed_at->copy()->addYears(2)->timestamp,
+            $closed->retained_until->timestamp,
+        );
+        $this->assertDatabaseHas('report_status_histories', [
+            'report_id' => $report->id,
+            'from_status' => 'waiting_confirmation',
+            'to_status' => 'closed',
+        ]);
+    }
+
+    public function test_manager_can_reopen_closed_report_and_clears_retention(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'closed');
+        $report->update([
+            'closed_at' => now()->subDay(),
+            'retained_until' => now()->addYear(),
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('reports.reopen', $report), [
+            'note' => 'Penghuni melaporkan kendala masih ada.',
+        ])->assertRedirect(route('reports.show', $report));
+
+        $reopened = $report->fresh();
+        $this->assertSame('reopened', $reopened->status);
+        $this->assertNull($reopened->closed_at);
+        $this->assertNull($reopened->retained_until);
+
+    }
+
+    public function test_reporter_can_reopen_a_closed_report(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'closed');
+
+        $this->actingAs($report->reporter)->post(route('reports.reopen', $report), [
+            'note' => 'Kendala masih terjadi.',
+        ])->assertRedirect(route('reports.show', $report));
+
+        $this->assertSame('reopened', $report->fresh()->status);
     }
 
     private function referenceData(): array

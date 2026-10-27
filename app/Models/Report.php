@@ -36,6 +36,7 @@ class Report extends Model
         'estimate_note',
         'resolved_at',
         'closed_at',
+        'retained_until',
     ];
 
     protected function casts(): array
@@ -45,6 +46,7 @@ class Report extends Model
             'estimated_resolution_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'retained_until' => 'datetime',
             'impact_score' => 'integer',
             'urgency_score' => 'integer',
             'safety_risk_score' => 'integer',

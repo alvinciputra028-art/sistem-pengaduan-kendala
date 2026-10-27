@@ -806,109 +806,251 @@ dapat menutup laporan secara administratif dengan alasan yang tercatat.
 
 ---
 
-# 8. Rencana migrasi yang realistis
+# 8. Tahap implementasi aktual dan rencana berikutnya
 
-Saya tidak menyarankan langsung menghapus aplikasi lama dan menulis ulang seluruh sistem sekaligus.
+Bagian ini menggantikan roadmap awal yang hanya bersifat usulan. Penilaian
+berikut dibuat berdasarkan isi proyek yang saat ini ada, termasuk migration,
+model, controller, view, route, dan test. Status diperbarui pada **27 Oktober
+2026**.
 
-## Tahap 0 — Tentukan kebijakan
+## Ringkasan status
 
-Sebelum coding, putuskan:
+| Tahap | Status | Penilaian |
+|---|---|---|
+| 0. Kebijakan akses dan alur | 🟡 Sebagian | Aturan privasi, visibilitas, role, dan transisi sudah dirumuskan serta sebagian diterapkan, tetapi belum seluruhnya menjadi policy/audit yang konsisten. |
+| 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, profil, dashboard dasar, dan migration sudah tersedia. |
+| 2. Tiket inti | 🟢 Hampir selesai | Pembuatan laporan, nomor tiket unik, lokasi, visibilitas, assignment, histori, dan lampiran gambar sudah berjalan. |
+| 3. Triase dan prioritas | 🟢 MVP selesai | Skor otomatis, koreksi manajer, estimasi, transisi status, dan assignment sudah tersedia; antrean operasional masih sederhana. |
+| 4. Percakapan dan notifikasi | 🔴 Belum dimulai | Model komentar dan notifikasi sudah ada, tetapi belum ada endpoint, form, UI, atau pengiriman notifikasi yang dapat digunakan. |
+| 5. Fitur komunitas | 🔴 Belum dimulai | Belum ada feed khusus, dukungan “saya juga mengalami”, moderasi, laporan konten, atau duplikasi. |
+| 6. Migrasi data lama | 🔴 Belum dimulai | Belum ada importer, pemetaan data legacy, validasi hasil, atau mode read-only untuk aplikasi lama. |
 
-- laporan apa yang publik;
-- siapa yang boleh melihat data;
-- apakah identitas penghuni ditampilkan;
-- berapa lama lampiran disimpan;
-- bagaimana petugas memberikan estimasi;
-- siapa yang boleh mengubah prioritas dan status;
-- kapan laporan dianggap ditutup.
+### Bukti implementasi yang sudah ada
 
-## Tahap 1 — Bangun fondasi Laravel
+- `routes/web.php` memiliki 13 route untuk login, dashboard, daftar/detail
+  laporan, pembuatan laporan, triase, perubahan status, dan assignment.
+- Migration sudah memisahkan `reports`, `report_assignments`,
+  `report_comments`, `attachments`, histori status, histori prioritas, dan
+  `notifications`.
+- `ReportController` sudah memvalidasi kategori aktif, lokasi kamar/area,
+  visibilitas, jawaban asesmen, serta maksimal lima gambar 10 MB.
+- `ReportTriageController` sudah menerapkan transisi status sampai
+  `waiting_confirmation`, assignment yang dibatasi unit layanan dan gedung,
+  estimasi, serta histori perubahan.
+- Test feature sudah mencakup pembuatan laporan, pembatasan kamar, visibilitas
+  antar-gedung, dan penyamaran identitas.
 
-Migrasikan:
+### Batasan verifikasi saat ini
 
-- login;
-- role dan permission;
-- pengguna;
-- gedung;
-- kamar;
-- kategori;
-- profil;
-- password;
-- dashboard dasar.
+`php artisan route:list` berhasil menampilkan 13 route. `php artisan test`
+belum dapat digunakan sebagai bukti lulus karena environment test mengarah ke
+MySQL `127.0.0.1:3306`, sedangkan server MySQL tidak tersedia saat pemeriksaan
+(connection refused). Sebelum menyimpulkan implementasi selesai, konfigurasi
+test perlu diarahkan ke database SQLite sementara atau MySQL test yang
+tersedia, lalu seluruh suite harus dijalankan ulang.
 
-## Tahap 2 — Migrasikan fitur tiket inti
+## Tahap 0 — Menutup kebijakan yang masih terbuka
 
-Implementasikan:
+**Status: ✅ Selesai untuk aturan inti.**
 
-- membuat laporan;
-- nomor tiket;
-- kategori dinamis;
-- lokasi;
-- visibilitas;
-- status;
-- penugasan teknisi;
-- riwayat status;
-- bukti lampiran.
+Kebijakan inti sekarang tercermin pada `ReportPolicy`, `ReportCommentPolicy`,
+dan `AttachmentPolicy`, yang didaftarkan terpusat melalui `AppServiceProvider`.
+Selesaikan pengerasan berikut sebelum menambah fitur baru:
 
-## Tahap 3 — Tambahkan triase dan prioritas
+- buat Policy/Gate terpusat untuk akses laporan, triase, komentar, dan lampiran;
+- tetapkan siapa yang dapat menutup, membuka kembali, dan mengubah prioritas;
+- tambahkan audit log untuk perubahan akses, assignment, prioritas, status, dan
+  penghapusan lampiran;
+- tetapkan masa retensi lampiran dan aturan penghapusan datanya;
+- status `waiting_confirmation` wajib dilalui petugas sebelum penghuni atau
+  manajer menutup laporan;
+- penghuni pemilik laporan dapat menutup atau membuka kembali laporan;
+- manajer dapat menutup atau membuka kembali laporan secara administratif;
+- petugas aktif yang di-assign dan manajer dapat mengubah prioritas, dengan
+  alasan wajib saat nilainya berubah;
+- laporan dan lampiran yang ditutup memiliki masa retensi dua tahun.
 
-Implementasikan:
+### Skenario pengujian Tahap 0
 
-- skor prioritas;
-- prioritas otomatis;
-- koreksi oleh manajer dengan alasan;
-- estimasi waktu dari petugas;
-- antrean unit layanan berdasarkan prioritas.
+Gunakan data uji berikut agar skenario dapat diulang:
 
-## Tahap 4 — Tambahkan komentar
+| Data | Nilai |
+|---|---|
+| Gedung | Gedung A dan Gedung B |
+| Penghuni | `resident_a` di Gedung A, `resident_b` di Gedung A, `resident_c` di Gedung B |
+| Manajer | `manager_a` |
+| Petugas aktif | `staff_a`, di-assign ke laporan Gedung A |
+| Petugas lain | `staff_b`, tidak di-assign ke laporan tersebut |
+| Laporan utama | `report_a`, pelapor `resident_a`, status awal `assigned` |
+| Lampiran | satu lampiran pada `report_a` dan satu lampiran pada komentar |
 
-Mulai dari:
+#### Matriks skenario
 
-- komentar teks;
-- balasan teknisi;
-- komentar penghuni pada laporan publik;
-- notifikasi email atau notifikasi dalam aplikasi.
+| ID | Area | Pra-kondisi | Langkah uji | Hasil yang diharapkan |
+|---|---|---|---|---|
+| T0-01 | Akses laporan | `report_a` milik `resident_a` | Buka detail sebagai `resident_a` | Berhasil, HTTP 200. |
+| T0-02 | Akses laporan publik | Laporan `public_building` berada di Gedung A | Buka sebagai `resident_b` | Berhasil; identitas kamar tidak dibocorkan. |
+| T0-03 | Privasi antar-gedung | Laporan privat berada di Gedung A | Buka sebagai `resident_c` | Ditolak HTTP 403. |
+| T0-04 | Akses petugas aktif | `staff_a` memiliki assignment aktif | Buka detail dan halaman triase | Berhasil. |
+| T0-05 | Akses petugas non-assigned | `staff_b` tidak memiliki assignment aktif | Buka detail atau triase | Ditolak HTTP 403. |
+| T0-06 | Akses manajer | `manager_a` aktif | Buka detail dan triase | Berhasil tanpa bergantung pada assignment. |
+| T0-07 | Komentar peserta | Pengguna dapat melihat laporan dan status bukan `closed` | Kirim komentar teks valid | Redirect berhasil; baris `report_comments` tercipta dengan `user_id` yang benar. |
+| T0-08 | Komentar pada laporan tertutup | `report_a` berstatus `closed` | Kirim komentar sebagai pelapor atau manajer | Ditolak HTTP 403; komentar tidak tercipta. |
+| T0-09 | Validasi komentar | Pengguna berhak akses | Kirim body kosong atau lebih dari 5.000 karakter | Validasi gagal pada `body`; tidak ada komentar tersimpan. |
+| T0-10 | Akses lampiran | Lampiran terhubung ke `report_a` | Unduh sebagai pelapor, `staff_a`, dan manajer | Berhasil; nama file dan content type sesuai metadata. |
+| T0-11 | Lampiran tanpa akses | Lampiran laporan Gedung A | Unduh sebagai `resident_c` atau `staff_b` | Ditolak HTTP 403; file tidak dikirim. |
+| T0-12 | Status pekerjaan petugas | `report_a` berstatus `in_progress`, `staff_a` aktif | Petugas mengirim status `waiting_confirmation` dengan catatan | Berhasil; status berubah dan histori status tercatat. |
+| T0-13 | Konfirmasi penghuni | `report_a` berstatus `waiting_confirmation` | `resident_a` menekan “Konfirmasi selesai” | Status menjadi `closed`, `closed_at` terisi, dan histori `waiting_confirmation` → `closed` tercatat. |
+| T0-14 | Penutupan terlalu dini | Status laporan `assigned`, `submitted`, atau `in_progress` | Penghuni mencoba menutup laporan | Ditolak HTTP 403; status tetap. |
+| T0-15 | Penutupan oleh manajer | Status `waiting_confirmation` | `manager_a` menutup laporan | Berhasil; status menjadi `closed` dan histori mencatat manajer sebagai pelaku. |
+| T0-16 | Pembukaan kembali oleh penghuni | Status `closed`, pelapor tersedia | Pelapor mengirim alasan lalu membuka kembali | Status menjadi `reopened`; `closed_at` dan `retained_until` menjadi `NULL`. |
+| T0-17 | Pembukaan kembali oleh manajer | Status `closed` dan pelapor tidak dapat bertindak | Manajer mengirim alasan lalu membuka kembali | Berhasil; status menjadi `reopened` dan histori tercatat. |
+| T0-18 | Pembukaan kembali tanpa hak | Status `closed` | `resident_b` atau petugas mencoba membuka kembali | Ditolak HTTP 403; status tetap `closed`. |
+| T0-19 | Validasi alasan buka kembali | Status `closed` | Kirim alasan kosong | Validasi gagal pada `note`; status tetap. |
+| T0-20 | Prioritas oleh petugas aktif | `staff_a` aktif dan ter-assign | Ubah prioritas dengan alasan | Berhasil; `priority` dan histori prioritas berubah. |
+| T0-21 | Prioritas tanpa alasan | Prioritas baru berbeda dari nilai lama | Petugas/manajer mengirim perubahan tanpa alasan | Validasi bisnis gagal pada `reason`; prioritas tidak berubah. |
+| T0-22 | Prioritas petugas non-assigned | `staff_b` tidak ter-assign | Ubah prioritas | Ditolak HTTP 403; histori tidak tercipta. |
+| T0-23 | Prioritas penghuni | Penghuni bukan manajer/petugas | Akses endpoint triase | Ditolak HTTP 403. |
+| T0-24 | Retensi laporan | Laporan berhasil ditutup pada waktu `T` | Periksa `retained_until` | Nilai sama dengan `T + 2 tahun`. |
+| T0-25 | Retensi lampiran laporan | Lampiran langsung terhubung ke laporan | Tutup laporan lalu periksa lampiran | `attachments.retained_until` sama dengan batas retensi laporan. |
+| T0-26 | Retensi lampiran komentar | Lampiran terhubung ke komentar | Tutup laporan lalu periksa lampiran komentar | Batas retensi ikut diisi dua tahun setelah penutupan. |
+| T0-27 | Reset retensi saat reopen | Laporan dan lampiran sudah memiliki retensi | Buka kembali laporan | `retained_until` laporan dan lampiran kembali `NULL`. |
+| T0-28 | Transisi ilegal | Laporan `assigned` | Petugas mencoba langsung ke `waiting_confirmation` tanpa `in_progress` | Ditolak; status tetap `assigned`. |
+| T0-29 | Histori lengkap | Jalankan alur assigned → in_progress → waiting_confirmation → closed → reopened | Periksa histori | Setiap perubahan memiliki status asal, tujuan, pelaku, waktu, dan catatan yang benar. |
+| T0-30 | Regresi login | Akun aktif dan tidak aktif tersedia | Login dengan kedua akun | Akun aktif berhasil; akun tidak aktif ditolak dan tetap guest. |
 
-Setelah stabil, tambahkan:
+#### Kriteria penerimaan
 
-- foto;
-- audio;
-- video;
-- status dibaca;
-- polling atau WebSocket.
+Implementasi Tahap 0 dinyatakan lulus apabila:
 
-## Tahap 5 — Tambahkan fitur komunitas
+1. T0-01 sampai T0-30 menghasilkan hasil yang diharapkan.
+2. Tidak ada endpoint sensitif yang dapat dilewati dengan mengganti ID laporan
+   atau ID lampiran.
+3. Setiap perubahan status, prioritas, penutupan, dan pembukaan kembali memiliki
+   histori yang dapat ditelusuri.
+4. Status `closed` hanya dapat dicapai dari `waiting_confirmation`.
+5. Tidak ada komentar atau lampiran baru yang dapat ditambahkan ke laporan
+   tertutup.
+6. Nilai retensi laporan dan seluruh lampiran konsisten dan di-reset ketika
+   laporan dibuka kembali.
 
-Implementasikan:
+#### Pemetaan ke pengujian otomatis
 
-- feed laporan umum per gedung;
-- “saya juga mengalami”;
-- laporan duplikat;
-- komentar;
-- moderasi;
-- pelaporan konten;
-- penyamaran identitas untuk kategori tertentu.
+Skenario berikut sebaiknya menjadi method PHPUnit di
+`tests/Feature/ReportTest.php`:
+
+- T0-01–T0-06: policy `view` dan `triage`;
+- T0-07–T0-09: endpoint komentar dan validasi;
+- T0-10–T0-11: policy dan endpoint lampiran;
+- T0-12, T0-14, T0-28: transisi petugas;
+- T0-13, T0-15–T0-19: close/reopen dan policy;
+- T0-20–T0-23: perubahan prioritas;
+- T0-24–T0-27: retensi laporan/lampiran;
+- T0-29: histori status;
+- T0-30: `tests/Feature/AuthenticationTest.php`.
+
+Perintah validasi utama:
+
+```text
+php artisan test
+```
+
+Perintah tersebut harus dijalankan dengan database testing terisolasi, bukan
+database development atau production.
+
+## Tahap 1 — Fondasi Laravel
+
+**Status: ✅ Selesai untuk MVP.**
+
+Tidak perlu mengulang migration fondasi. Yang tersisa adalah pengerasan:
+
+- tambahkan test untuk role pada setiap route sensitif;
+- pindahkan pemeriksaan akses yang tersebar di controller ke Policy/Gate;
+- lengkapi dashboard dengan metrik dan daftar kerja berdasarkan role;
+- pastikan akun staf memiliki cakupan gedung dan unit layanan yang konsisten.
+
+## Tahap 2 — Tiket inti
+
+**Status: 🟢 Hampir selesai.**
+
+Fitur inti sudah dapat membuat laporan dengan nomor tiket, kategori dinamis,
+lokasi, visibilitas, prioritas awal, penugasan, histori, dan lampiran gambar.
+
+Sebelum tahap ini ditutup:
+
+- tambahkan route untuk mengunduh/menampilkan lampiran dengan pemeriksaan akses;
+- validasi `room_id` terhadap gedung secara eksplisit di level request/database;
+- tangani kegagalan penyimpanan file agar transaksi database tidak meninggalkan
+  data lampiran yang tidak lengkap;
+- tambahkan test untuk upload, akses lampiran, nomor tiket bersamaan, dan
+  penghapusan/retensi file.
+
+## Tahap 3 — Triase dan prioritas
+
+**Status: 🟢 MVP selesai.**
+
+Asesmen laporan menghasilkan `priority_score` dan prioritas otomatis. Manajer
+dapat mengubah prioritas dengan alasan, mengatur estimasi, memilih unit layanan
+dan staf, sedangkan staf dapat mengubah status melalui transisi yang dibatasi.
+
+Pekerjaan penutupan tahap:
+
+- buat antrean kerja nyata untuk staf dan manajer, bukan hanya daftar laporan;
+- tampilkan filter gedung, unit layanan, status, prioritas, dan usia laporan;
+- pisahkan aksi transisi manajer dan staf secara eksplisit;
+- tambahkan test negatif untuk setiap transisi dan assignment lintas gedung;
+- definisikan SLA serta notifikasi ketika estimasi terlewati.
+
+## Tahap 4 — Percakapan dan notifikasi
+
+**Status: 🔴 Belum dimulai (model dasar tersedia).**
+
+Migration dan relasi `report_comments`/`attachments` sudah menjadi fondasi,
+tetapi route dan UI komentar belum tersedia. Implementasikan berurutan:
+
+1. endpoint dan form komentar teks dengan izin berdasarkan visibilitas laporan;
+2. balasan penghuni, staf, dan manajer pada thread laporan;
+3. lampiran yang terkait komentar, bukan hanya laporan;
+4. notifikasi dalam aplikasi dan status sudah dibaca;
+5. email setelah alur stabil;
+6. polling atau WebSocket hanya bila kebutuhan real-time sudah terbukti.
+
+## Tahap 5 — Fitur komunitas
+
+**Status: 🔴 Belum dimulai.**
+
+Kerjakan setelah akses komentar stabil: feed laporan publik per gedung,
+“saya juga mengalami”, penandaan duplikat, moderasi, pelaporan konten, dan
+penyamaran identitas untuk kategori sensitif. Fitur ini tidak boleh membuka
+laporan `participants` atau data kamar kepada penghuni lain.
 
 ## Tahap 6 — Migrasi data lama
 
-Jangan memasukkan data lama secara sembarangan. Buat skrip migrasi:
+**Status: 🔴 Belum dimulai.**
+
+Buat command/importer idempotent dan jalankan di salinan database terlebih
+dahulu:
 
 - `penghuni` menjadi `users`;
 - `teknisi` dan `manajer` menjadi user dengan role;
 - kategori lama dipetakan ke kategori baru;
 - `pengaduan` menjadi `reports`;
-- `bukti_foto` menjadi `attachments`;
-- `bukti_penyelesaian` menjadi attachment atau komentar teknisi;
-- `penanganan_dini` menjadi komentar historis;
-- `komentar_penyelesaian` menjadi komentar historis.
+- `bukti_foto` dan `bukti_penyelesaian` menjadi `attachments`;
+- `penanganan_dini` dan `komentar_penyelesaian` menjadi komentar historis.
 
-Data lama sebaiknya diberi tanda:
+Tambahkan penanda `source = legacy`, laporan jumlah baris yang berhasil/gagal,
+rekonsiliasi nomor tiket, dan validasi akses setelah import. Aplikasi lama
+dipertahankan read-only sampai hasil migrasi disetujui.
 
-```text
-source = legacy
-```
+## Urutan kerja yang disarankan sekarang
 
-Aplikasi lama tetap disimpan sementara dalam mode read-only sampai data baru tervalidasi.
+1. Perbaiki environment test dan pastikan suite lulus.
+2. Selesaikan Policy/Gate serta test otorisasi.
+3. Tutup Tahap 2 dengan akses lampiran yang aman dan test upload.
+4. Sempurnakan antrean/SLA pada Tahap 3.
+5. Implementasikan komentar teks dan notifikasi in-app pada Tahap 4.
+6. Setelah data baru stabil, kerjakan importer Tahap 6 sebelum fitur komunitas
+   yang lebih luas.
 
 ---
 
