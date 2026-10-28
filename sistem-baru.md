@@ -435,16 +435,40 @@ Suite terakhir: **31 test lulus, 125 assertion lulus**.
 Tahap 3 dan Tahap 4 selesai untuk cakupan MVP. Antrean kerja dan daftar laporan
 menggunakan satu halaman dengan mode operasional berdasarkan role; route lama
 `/queue` tetap tersedia sebagai alias kompatibilitas untuk staff dan manager.
-Tahap berikutnya adalah menyelesaikan email setelah notifikasi in-app stabil,
-kemudian mengevaluasi polling atau WebSocket hanya bila kebutuhan operasional
-memang memerlukannya. Setelah itu dapat dilanjutkan ke Tahap 5: fitur komunitas.
+Tahap 5 selesai untuk cakupan MVP. Tahap berikutnya adalah menyelesaikan email
+setelah notifikasi in-app stabil, kemudian mengevaluasi polling atau WebSocket
+hanya bila kebutuhan operasional memang memerlukannya. Setelah itu dapat
+dilanjutkan ke Tahap 6: migrasi legacy.
 
 ### Tahap 5: komunitas
 
-- Feed laporan publik per gedung.
-- “Saya juga mengalami”.
-- Penandaan duplikat.
-- Moderasi dan pelaporan konten.
+- ✅ Feed laporan publik per gedung dengan pembatasan visibilitas.
+- ✅ “Saya juga mengalami” hanya untuk resident, dengan satu respons per
+  pengguna/laporan, kecuali pelapor laporan tersebut.
+- ✅ Tombol “Tandai duplikat” mengirim flag moderasi tanpa meminta ID laporan
+  utama; manager meninjaunya melalui halaman moderasi dan dapat menolak flag
+  atau mengonfirmasi laporan utama.
+- ✅ Pelaporan konten dan moderasi manager untuk menyembunyikan laporan dari
+  feed tanpa mengubah `visibility`; laporan dapat ditampilkan kembali.
+- ✅ Manager memiliki aksi khusus **“Batalkan status duplikat”** untuk
+  membatalkan konfirmasi duplikat, menghapus relasi laporan utama, dan
+  memulihkan laporan ke feed sebagai laporan mandiri.
+- ✅ Feed hanya menampilkan status aktif (`submitted` sampai
+  `waiting_confirmation` dan `reopened`), bukan `closed` atau laporan duplikat.
+- ✅ Halaman `reports` resident hanya menampilkan laporan miliknya; laporan
+  publik diakses melalui feed komunitas.
+- ✅ Feed komunitas hanya untuk resident. Staff dan manager menggunakan halaman
+  `reports`; manager memiliki halaman moderasi terpisah.
+- ✅ Resident tidak dapat melaporkan, menandai duplikat, atau mengakui laporan
+  miliknya sendiri.
+- ✅ Staff dan manager dapat melaporkan atau menandai duplikat dari halaman
+  `reports`; staff tetap dibatasi pada laporan yang dapat diaksesnya.
+- ✅ Notifikasi pelaporan komunitas untuk manager memiliki akses cepat `Ke
+  Moderasi`.
+
+### Pesan commit yang disarankan
+
+`feat: add community reporting, moderation, and duplicate recovery`
 
 ### Tahap 6: migrasi legacy
 

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Building;
 use App\Models\Category;
 use App\Models\Notification;
+use App\Models\ReportModerationReport;
 use App\Models\Room;
 use App\Models\Report;
 use App\Models\ReportAssignment;
@@ -656,6 +657,293 @@ class ReportTest extends TestCase
             ->get(route('notifications.open', $notification))
             ->assertRedirect(route('reports.show', $report));
         $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_resident_can_use_the_building_community_feed_and_acknowledge_once(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building', 'location_type' => 'common_area']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+
+        $this->actingAs($resident)->get(route('community.index'))
+            ->assertOk()
+            ->assertSee($report->title);
+        $this->actingAs($report->reporter)->get(route('reports.index'))
+            ->assertOk()
+            ->assertSee($report->title);
+        $this->actingAs($resident)->post(route('community.acknowledge', $report))
+            ->assertRedirect();
+        $this->actingAs($resident)->post(route('community.acknowledge', $report))
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('report_acknowledgements', 1);
+    }
+
+    public function test_resident_from_another_building_cannot_access_the_community_report(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $otherBuilding = Building::create(['name' => 'Gedung Lain']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $otherBuilding->id,
+        ]);
+
+        $this->actingAs($resident)->get(route('community.index'))->assertOk()->assertDontSee($report->title);
+        $this->actingAs($resident)->post(route('community.acknowledge', $report))->assertForbidden();
+    }
+
+    public function test_resident_can_report_public_content_and_manager_can_moderate_it(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($resident)->post(route('community.report', $report), [
+            'reason' => 'inappropriate',
+            'note' => 'Perlu ditinjau.',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('report_moderation_reports', [
+            'report_id' => $report->id,
+            'reported_by' => $resident->id,
+            'status' => 'open',
+        ]);
+
+        $this->actingAs($manager)->post(route('community.hide', $report))
+            ->assertRedirect();
+        $this->assertNotNull($report->fresh()->community_hidden_at);
+        $this->assertSame('resolved', ReportModerationReport::firstOrFail()->status);
+    }
+
+    public function test_staff_cannot_access_community(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $staff->buildings()->attach($building);
+
+        $this->actingAs($staff)->get(route('community.index'))->assertForbidden();
+        $this->actingAs($staff)->post(route('community.hide', $report))->assertForbidden();
+    }
+
+    public function test_only_residents_can_acknowledge_and_duplicate_flags_do_not_require_a_report_id(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->get(route('community.index'))->assertForbidden();
+        $this->actingAs($manager)->post(route('community.acknowledge', $report))->assertForbidden();
+        $this->actingAs($report->reporter)->post(route('community.acknowledge', $report))->assertStatus(422);
+        $this->actingAs($resident)->post(route('community.duplicate', $report))->assertRedirect();
+        $this->assertDatabaseHas('report_moderation_reports', [
+            'report_id' => $report->id,
+            'reason' => 'duplicate',
+            'status' => 'open',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $report->reporter_id,
+            'type' => 'report.community_reported',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $manager->id,
+            'type' => 'report.community_reported',
+        ]);
+        $this->actingAs($manager)->get(route('community.moderation'))
+            ->assertOk()
+            ->assertSee($report->title);
+    }
+
+    public function test_duplicate_flag_reopens_resolved_flag_for_manager_review(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+        ReportModerationReport::create([
+            'report_id' => $report->id,
+            'reported_by' => $resident->id,
+            'reason' => 'duplicate',
+            'status' => 'resolved',
+            'reviewed_by' => $manager->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $this->actingAs($resident)->post(route('community.duplicate', $report))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('report_moderation_reports', [
+            'report_id' => $report->id,
+            'reported_by' => $resident->id,
+            'reason' => 'duplicate',
+            'status' => 'open',
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+        ]);
+    }
+
+    public function test_report_owner_cannot_report_or_mark_own_report_as_duplicate(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $owner = $report->reporter;
+
+        $this->actingAs($owner)->get(route('community.index'))
+            ->assertOk()
+            ->assertDontSee('Laporkan konten')
+            ->assertDontSee('Tandai duplikat');
+        $this->actingAs($owner)->post(route('community.report', $report), [
+            'reason' => 'other',
+        ])->assertStatus(422);
+        $this->actingAs($owner)->post(route('community.duplicate', $report))
+            ->assertStatus(422);
+    }
+
+    public function test_staff_and_manager_can_flag_accessible_reports_from_reports_page(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $category->default_service_unit_id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->get(route('reports.index'))
+            ->assertOk()
+            ->assertSee('Laporkan untuk moderasi')
+            ->assertSee('Tandai duplikat');
+        $this->actingAs($staff)->post(route('community.duplicate', $report))
+            ->assertRedirect();
+        $this->assertDatabaseHas('report_moderation_reports', [
+            'report_id' => $report->id,
+            'reported_by' => $staff->id,
+            'reason' => 'duplicate',
+        ]);
+    }
+
+    public function test_manager_community_report_notification_opens_moderation(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $manager = User::factory()->create(['role' => 'manager']);
+        $notification = Notification::create([
+            'user_id' => $manager->id,
+            'type' => 'report.community_reported',
+            'data' => ['report_id' => $report->id, 'message' => 'Laporan dilaporkan.'],
+        ]);
+
+        $this->actingAs($manager)->get(route('notifications.index'))
+            ->assertSee('Ke Moderasi')
+            ->assertDontSee('Ke laporan');
+        $this->actingAs($manager)->get(route('notifications.open', $notification))
+            ->assertRedirect(route('community.moderation'));
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_resident_reports_page_excludes_public_reports_and_manager_can_review_duplicate(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $public = $this->makeReport($building, $room, $category, 'submitted');
+        $public->update(['visibility' => 'public_building', 'title' => 'Laporan publik']);
+        $private = $this->makeReport($building, $room, $category, 'submitted');
+        $private->update(['title' => 'Laporan pribadi']);
+        $canonical = $this->makeReport($building, $room, $category, 'submitted');
+        $canonical->update(['visibility' => 'public_building', 'title' => 'Laporan utama']);
+        $resident = $private->reporter;
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($resident)->get(route('reports.index'))
+            ->assertOk()
+            ->assertSee($private->title)
+            ->assertDontSee($public->title);
+        ReportModerationReport::create([
+            'report_id' => $public->id,
+            'reported_by' => $resident->id,
+            'reason' => 'duplicate',
+            'status' => 'open',
+        ]);
+        $this->actingAs($manager)->post(route('community.review', $public), [
+            'action' => 'confirm_duplicate',
+            'duplicate_of_report_id' => $canonical->id,
+        ])->assertRedirect();
+        $this->assertSame($canonical->id, $public->fresh()->duplicate_of_report_id);
+    }
+
+    public function test_manager_can_restore_a_hidden_report_without_changing_visibility(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'waiting_confirmation');
+        $report->update(['visibility' => 'public_building', 'community_hidden_at' => now()]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('community.restore', $report))->assertRedirect();
+        $restored = $report->fresh();
+        $this->assertNull($restored->community_hidden_at);
+        $this->assertSame('public_building', $restored->visibility);
+    }
+
+    public function test_manager_can_cancel_duplicate_status_and_restore_report_to_community(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $canonical = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update([
+            'visibility' => 'public_building',
+            'duplicate_of_report_id' => $canonical->id,
+            'community_hidden_at' => now(),
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('community.cancel-duplicate', $report))
+            ->assertRedirect();
+
+        $restored = $report->fresh();
+        $this->assertNull($restored->duplicate_of_report_id);
+        $this->assertNull($restored->community_hidden_at);
+        $this->actingAs(User::findOrFail($report->reporter_id))
+            ->get(route('community.index'))
+            ->assertSee($report->title);
+    }
+
+    public function test_only_manager_can_access_community_moderation(): void
+    {
+        $resident = User::factory()->create(['role' => 'resident']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($resident)->get(route('community.moderation'))->assertForbidden();
+        $this->actingAs($staff)->get(route('community.moderation'))->assertForbidden();
+        $this->actingAs($manager)->get(route('community.moderation'))->assertOk();
     }
 
     private function referenceData(): array

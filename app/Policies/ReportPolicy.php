@@ -22,11 +22,7 @@ class ReportPolicy
                 return;
             }
 
-            $query->where('reporter_id', $user->id)
-                ->orWhere(function (Builder $public) use ($user): void {
-                    $public->where('building_id', $user->building_id)
-                        ->where('visibility', 'public_building');
-                });
+            $query->where('reporter_id', $user->id);
         });
     }
 

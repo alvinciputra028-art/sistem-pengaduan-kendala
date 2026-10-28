@@ -34,6 +34,11 @@ class NotificationController extends Controller
         abort_unless($notification->user_id === $request->user()->id, 403);
 
         $report = Report::findOrFail($notification->data['report_id'] ?? 0);
+        if ($notification->type === 'report.community_reported' && $request->user()->role === 'manager') {
+            $notification->update(['read_at' => $notification->read_at ?? now()]);
+
+            return redirect()->route('community.moderation');
+        }
         $this->authorize('view', $report);
         $notification->update(['read_at' => $notification->read_at ?? now()]);
 

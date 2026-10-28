@@ -66,6 +66,24 @@
                     @if ($report->assignments->first())
                         <p>{{ $report->assignments->first()->serviceUnit->name }} — {{ $report->assignments->first()->staff?->name ?? 'Belum ada petugas' }}</p>
                     @endif
+                    @if ($report->reporter_id !== auth()->id())
+                        <form method="POST" action="{{ route('community.report', $report) }}">
+                            @csrf
+                            <label for="report-reason-{{ $report->id }}">Laporkan untuk moderasi</label>
+                            <select id="report-reason-{{ $report->id }}" name="reason" required>
+                                <option value="">Pilih alasan</option>
+                                <option value="inappropriate">Konten tidak pantas</option>
+                                <option value="personal_data">Data pribadi</option>
+                                <option value="other">Lainnya</option>
+                            </select>
+                            <input name="note" maxlength="2000" placeholder="Catatan (opsional)">
+                            <button type="submit">Laporkan</button>
+                        </form>
+                        <form method="POST" action="{{ route('community.duplicate', $report) }}">
+                            @csrf
+                            <button type="submit">Tandai duplikat</button>
+                        </form>
+                    @endif
                 @endif
             </article>
         @empty

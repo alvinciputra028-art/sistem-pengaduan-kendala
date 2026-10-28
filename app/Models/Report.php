@@ -37,6 +37,8 @@ class Report extends Model
         'resolved_at',
         'closed_at',
         'retained_until',
+        'duplicate_of_report_id',
+        'community_hidden_at',
     ];
 
     protected function casts(): array
@@ -51,6 +53,7 @@ class Report extends Model
             'urgency_score' => 'integer',
             'safety_risk_score' => 'integer',
             'assessment_answers' => 'array',
+            'community_hidden_at' => 'datetime',
         ];
     }
 
@@ -102,5 +105,15 @@ class Report extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);
+    }
+
+    public function acknowledgements(): HasMany
+    {
+        return $this->hasMany(ReportAcknowledgement::class);
+    }
+
+    public function moderationReports(): HasMany
+    {
+        return $this->hasMany(ReportModerationReport::class);
     }
 }

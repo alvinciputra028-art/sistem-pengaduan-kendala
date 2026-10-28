@@ -8,6 +8,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTriageController;
 use App\Http\Controllers\ReportWorkflowController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\CommunityController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -30,6 +31,15 @@ Route::middleware('auth')->group(function (): void {
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
+    Route::get('/community/moderation', [CommunityController::class, 'moderation'])->name('community.moderation');
+    Route::post('/community/{report}/acknowledge', [CommunityController::class, 'acknowledge'])->name('community.acknowledge');
+    Route::post('/community/{report}/report', [CommunityController::class, 'report'])->name('community.report');
+    Route::post('/community/{report}/duplicate', [CommunityController::class, 'duplicate'])->name('community.duplicate');
+    Route::post('/community/{report}/hide', [CommunityController::class, 'hide'])->name('community.hide');
+    Route::post('/community/{report}/restore', [CommunityController::class, 'restore'])->name('community.restore');
+    Route::post('/community/{report}/cancel-duplicate', [CommunityController::class, 'cancelDuplicate'])->name('community.cancel-duplicate');
+    Route::post('/community/{report}/review', [CommunityController::class, 'review'])->name('community.review');
     Route::get('/queue', [ReportController::class, 'index'])
         ->middleware('role:staff,manager')
         ->name('reports.queue');
