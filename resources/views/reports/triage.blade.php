@@ -50,6 +50,9 @@
             <label for="estimate_note">Catatan estimasi</label>
             <textarea id="estimate_note" name="estimate_note" maxlength="2000">{{ old('estimate_note', $report->estimate_note) }}</textarea>
             <br>
+            <label for="estimate_reason">Alasan perubahan estimasi</label>
+            <textarea id="estimate_reason" name="estimate_reason" maxlength="2000">{{ old('estimate_reason') }}</textarea>
+            <br>
             <button type="submit">Simpan triase</button>
         </form>
         @else

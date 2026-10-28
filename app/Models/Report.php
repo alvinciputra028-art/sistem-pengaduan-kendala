@@ -94,6 +94,11 @@ class Report extends Model
         return $this->hasMany(ReportPriorityHistory::class);
     }
 
+    public function estimateHistories(): HasMany
+    {
+        return $this->hasMany(ReportEstimateHistory::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);

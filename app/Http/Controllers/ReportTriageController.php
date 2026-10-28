@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ServiceUnit;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,19 +55,29 @@ class ReportTriageController extends Controller
         $data = $request->validate([
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'critical'])],
             'reason' => ['nullable', 'string', 'max:2000'],
+            'estimate_reason' => ['nullable', 'string', 'max:2000'],
             'estimate_note' => ['nullable', 'string', 'max:2000'],
             'estimated_response_at' => ['nullable', 'date'],
             'estimated_resolution_at' => ['nullable', 'date', 'after_or_equal:estimated_response_at'],
         ]);
 
         $priorityChanged = $data['priority'] !== $report->priority;
+        $estimateChanged = $report->estimated_response_at?->toDateTimeString() !== $this->normalizeDate($data['estimated_response_at'] ?? null)
+            || $report->estimated_resolution_at?->toDateTimeString() !== $this->normalizeDate($data['estimated_resolution_at'] ?? null)
+            || $report->estimate_note !== ($data['estimate_note'] ?? null);
         if ($priorityChanged && blank($data['reason'] ?? null)) {
             return back()->withErrors(['reason' => 'Alasan wajib diisi jika prioritas diubah.'])->withInput();
         }
+        if ($estimateChanged && blank($data['estimate_reason'] ?? null)) {
+            return back()->withErrors(['estimate_reason' => 'Alasan wajib diisi jika estimasi diubah.'])->withInput();
+        }
 
-        DB::transaction(function () use ($data, $report, $request, $priorityChanged): void {
+        DB::transaction(function () use ($data, $report, $request, $priorityChanged, $estimateChanged): void {
             $oldStatus = $report->status;
             $oldPriority = $report->priority;
+            $oldResponseAt = $report->estimated_response_at;
+            $oldResolutionAt = $report->estimated_resolution_at;
+            $oldEstimateNote = $report->estimate_note;
             $newStatus = $request->user()->role === 'manager' && in_array($oldStatus, ['submitted', 'reopened'], true)
                 ? 'triaged'
                 : $oldStatus;
@@ -90,6 +101,18 @@ class ReportTriageController extends Controller
                 ]);
             }
 
+            if ($estimateChanged) {
+                $report->estimateHistories()->create([
+                    'old_estimated_response_at' => $oldResponseAt,
+                    'new_estimated_response_at' => $report->estimated_response_at,
+                    'old_estimated_resolution_at' => $oldResolutionAt,
+                    'new_estimated_resolution_at' => $report->estimated_resolution_at,
+                    'estimate_note' => $report->estimate_note,
+                    'changed_by' => $request->user()->id,
+                    'reason' => $data['estimate_reason'],
+                ]);
+            }
+
             if ($oldStatus !== $newStatus) {
                 $report->statusHistories()->create([
                     'from_status' => $oldStatus,
@@ -101,6 +124,11 @@ class ReportTriageController extends Controller
         });
 
         return redirect()->route('reports.triage.edit', $report)->with('success', 'Triase laporan berhasil diperbarui.');
+    }
+
+    private function normalizeDate(?string $date): ?string
+    {
+        return $date === null ? null : Carbon::parse($date)->toDateTimeString();
     }
 
     public function transition(Request $request, Report $report): RedirectResponse

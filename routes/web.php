@@ -26,6 +26,9 @@ Route::middleware('auth')->group(function (): void {
         ->name('dashboard');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/queue', [ReportController::class, 'index'])
+        ->middleware('role:staff,manager')
+        ->name('reports.queue');
     Route::get('/reports/create', [ReportController::class, 'create'])
         ->middleware('role:resident')
         ->name('reports.create');

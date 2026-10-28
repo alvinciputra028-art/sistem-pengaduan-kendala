@@ -2,7 +2,7 @@
 
 Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
 pengujian, dan backlog proyek Laravel ini. Status terakhir diperbarui pada
-**27 Oktober 2026**.
+**28 Oktober 2026**.
 
 ## Keputusan arsitektur
 
@@ -391,16 +391,17 @@ Perintah validasi:
 php artisan test
 ```
 
-Suite terakhir: **28 test lulus, 110 assertion lulus**.
+Suite terakhir: **31 test lulus, 125 assertion lulus**.
 
 ## Backlog berikutnya
 
 ### Tahap 3: antrean dan SLA
 
-- Dashboard antrean berdasarkan gedung, unit, status, prioritas, dan usia.
-- Filter kerja untuk manajer dan petugas.
-- Histori estimasi dan alasan perubahan estimasi.
-- Notifikasi ketika estimasi terlewati.
+- ✅ Dashboard antrean kerja berdasarkan gedung, unit, status, prioritas, dan usia.
+- ✅ Filter kerja untuk manajer dan petugas; petugas hanya melihat assignment aktif.
+- ✅ Histori estimasi dan alasan perubahan estimasi.
+- ✅ Command terjadwal untuk notifikasi ketika estimasi respons atau penyelesaian
+  terlewati, dengan pencegahan notifikasi duplikat.
 
 ### Tahap 4: percakapan dan notifikasi
 
@@ -409,6 +410,19 @@ Suite terakhir: **28 test lulus, 110 assertion lulus**.
 - Notifikasi kepada pelapor saat status, assignment, atau estimasi berubah.
 - Email setelah notifikasi in-app stabil.
 - Polling atau WebSocket hanya bila diperlukan.
+
+### Pesan commit yang disarankan
+
+`feat: implement complaint reporting workflow with queue and SLA notifications`
+
+### Status terbaru dan tahap selanjutnya
+
+Tahap 3 selesai untuk cakupan MVP. Antrean kerja dan daftar laporan kini
+menggunakan satu halaman dengan mode operasional berdasarkan role; route lama
+`/queue` tetap tersedia sebagai alias kompatibilitas untuk staff dan manager.
+Tahap berikutnya adalah Tahap 4: melengkapi percakapan dan notifikasi, terutama
+lampiran komentar, status notifikasi dibaca, serta notifikasi perubahan status,
+assignment, dan estimasi kepada pelapor.
 
 ### Tahap 5: komunitas
 

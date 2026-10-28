@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Building;
 use App\Models\Report;
+use App\Models\ServiceUnit;
 use App\Policies\ReportPolicy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,12 +19,67 @@ class ReportController extends Controller
 {
     public function index(Request $request): View
     {
-        $reports = app(ReportPolicy::class)->visibleQuery($request->user())
-            ->with(['category', 'building', 'reporter'])
-            ->latest()
-            ->paginate(10);
+        $user = $request->user();
+        $filters = [];
+        $query = Report::query()
+            ->with(['category', 'building', 'reporter']);
 
-        return view('reports.index', compact('reports'));
+        if (in_array($user->role, ['manager', 'staff'], true)) {
+            $filters = $request->validate([
+                'building_id' => ['nullable', 'integer', 'exists:buildings,id'],
+                'service_unit_id' => ['nullable', 'integer', 'exists:service_units,id'],
+                'status' => ['nullable', Rule::in([
+                    'submitted', 'triaged', 'assigned', 'in_progress',
+                    'waiting_confirmation', 'reopened', 'closed',
+                ])],
+                'priority' => ['nullable', Rule::in(['low', 'normal', 'high', 'critical'])],
+                'age' => ['nullable', Rule::in(['under_1_day', '1_to_3_days', 'over_3_days'])],
+            ]);
+
+            $query
+                ->with(['assignments' => fn ($assignment) => $assignment
+                    ->whereNull('unassigned_at')
+                    ->with(['serviceUnit', 'staff'])])
+                ->when($user->role === 'staff', fn (Builder $query) => $query->whereHas(
+                    'assignments',
+                    fn (Builder $assignment) => $assignment
+                        ->where('staff_id', $user->id)
+                        ->whereNull('unassigned_at'),
+                ))
+                ->when($filters['building_id'] ?? null, fn (Builder $query, int $buildingId) => $query->where('building_id', $buildingId))
+                ->when($filters['service_unit_id'] ?? null, fn (Builder $query, int $unitId) => $query->whereHas(
+                    'assignments',
+                    fn (Builder $assignment) => $assignment
+                        ->where('service_unit_id', $unitId)
+                        ->whereNull('unassigned_at'),
+                ))
+                ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
+                ->when($filters['priority'] ?? null, fn (Builder $query, string $priority) => $query->where('priority', $priority))
+                ->when($filters['age'] ?? null, function (Builder $query, string $age): void {
+                    $query->when($age === 'under_1_day', fn (Builder $query) => $query->where('created_at', '>', now()->subDay()))
+                        ->when($age === '1_to_3_days', fn (Builder $query) => $query
+                            ->where('created_at', '<=', now()->subDay())
+                            ->where('created_at', '>', now()->subDays(3)))
+                        ->when($age === 'over_3_days', fn (Builder $query) => $query->where('created_at', '<=', now()->subDays(3)));
+                })
+                ->orderByRaw("CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END")
+                ->oldest('created_at');
+        } else {
+            $query = app(ReportPolicy::class)->visibleQuery($user)
+                ->with(['category', 'building', 'reporter'])
+                ->latest();
+        }
+
+        return view('reports.index', [
+            'reports' => $query->paginate(15)->withQueryString(),
+            'filters' => $filters,
+            'buildings' => in_array($user->role, ['manager', 'staff'], true)
+                ? Building::query()->where('is_active', true)->orderBy('name')->get()
+                : collect(),
+            'serviceUnits' => in_array($user->role, ['manager', 'staff'], true)
+                ? ServiceUnit::query()->where('is_active', true)->orderBy('name')->get()
+                : collect(),
+        ]);
     }
 
     public function create(Request $request): View

@@ -529,6 +529,74 @@ class ReportTest extends TestCase
         $this->assertSame('reopened', $report->fresh()->status);
     }
 
+    public function test_manager_can_filter_the_work_queue_and_staff_is_limited_to_active_assignments(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $unit = ServiceUnit::whereKey($category->default_service_unit_id)->firstOrFail();
+        $unit->buildings()->attach($building);
+        $staff->serviceUnits()->attach($unit);
+        $staff->buildings()->attach($building);
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        ReportAssignment::create([
+            'report_id' => $report->id,
+            'service_unit_id' => $unit->id,
+            'staff_id' => $staff->id,
+            'assigned_by' => $manager->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->get(route('reports.index', [
+            'priority' => 'normal',
+            'status' => 'assigned',
+        ]))->assertOk()->assertSee($report->ticket_number);
+        $this->actingAs($staff)->get(route('reports.index'))
+            ->assertOk()
+            ->assertSee($report->ticket_number);
+        $this->actingAs($staff)->get(route('reports.queue'))
+            ->assertOk()
+            ->assertSee($report->ticket_number);
+        $this->actingAs($report->reporter)->get(route('reports.queue'))->assertForbidden();
+    }
+
+    public function test_estimate_changes_require_a_reason_and_are_audited(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $report = $this->makeReport($building, $room, $category, 'triaged');
+        $payload = [
+            'priority' => 'normal',
+            'estimated_response_at' => now()->addDay()->format('Y-m-d H:i:s'),
+            'estimated_resolution_at' => now()->addDays(2)->format('Y-m-d H:i:s'),
+            'estimate_note' => 'Pemeriksaan dijadwalkan.',
+        ];
+
+        $this->actingAs($manager)->patch(route('reports.triage.update', $report), $payload)
+            ->assertSessionHasErrors('estimate_reason');
+        $this->actingAs($manager)->patch(route('reports.triage.update', $report), $payload + [
+            'estimate_reason' => 'Penjadwalan unit layanan.',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('report_estimate_histories', [
+            'report_id' => $report->id,
+            'reason' => 'Penjadwalan unit layanan.',
+        ]);
+    }
+
+    public function test_overdue_sla_notifications_are_idempotent(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $manager = User::factory()->create(['role' => 'manager']);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['estimated_response_at' => now()->subHour()]);
+
+        $this->artisan('reports:notify-overdue')->assertExitCode(0);
+        $this->assertDatabaseCount('notifications', 2);
+        $this->artisan('reports:notify-overdue')->assertExitCode(0);
+        $this->assertDatabaseCount('notifications', 2);
+    }
+
     private function referenceData(): array
     {
         $building = Building::create(['name' => 'Rusun INN']);
