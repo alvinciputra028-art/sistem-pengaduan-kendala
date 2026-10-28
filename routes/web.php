@@ -7,6 +7,7 @@ use App\Http\Controllers\ReportCommentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportTriageController;
 use App\Http\Controllers\ReportWorkflowController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,6 +26,9 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('role:resident,staff,manager')
         ->name('dashboard');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/queue', [ReportController::class, 'index'])
         ->middleware('role:staff,manager')

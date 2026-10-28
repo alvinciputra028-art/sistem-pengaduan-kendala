@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
+use App\Services\ReportNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,12 @@ class ReportWorkflowController extends Controller
         $this->authorize('close', $report);
 
         $this->changeStatus($request, $report, 'closed', 'Laporan dikonfirmasi selesai.');
+        app(ReportNotificationService::class)->notify(
+            $report,
+            'report.status_changed',
+            'Laporan '.$report->ticket_number.' telah ditutup.',
+            $request->user(),
+        );
 
         return redirect()->route('reports.show', $report)
             ->with('success', 'Laporan ditutup.');
@@ -28,6 +35,12 @@ class ReportWorkflowController extends Controller
         ]);
 
         $this->changeStatus($request, $report, 'reopened', $data['note']);
+        app(ReportNotificationService::class)->notify(
+            $report,
+            'report.status_changed',
+            'Laporan '.$report->ticket_number.' telah dibuka kembali.',
+            $request->user(),
+        );
 
         return redirect()->route('reports.show', $report)
             ->with('success', 'Laporan dibuka kembali.');

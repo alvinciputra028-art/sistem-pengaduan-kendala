@@ -67,9 +67,6 @@
                         <p>{{ $report->assignments->first()->serviceUnit->name }} — {{ $report->assignments->first()->staff?->name ?? 'Belum ada petugas' }}</p>
                     @endif
                 @endif
-                @if (auth()->user()->role !== 'resident')
-                    <p><a href="{{ route('reports.triage.edit', $report) }}">Buka triase</a></p>
-                @endif
             </article>
         @empty
             <p>Belum ada laporan yang dapat ditampilkan.</p>

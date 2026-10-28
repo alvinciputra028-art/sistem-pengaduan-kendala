@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Building;
 use App\Models\Category;
+use App\Models\Notification;
 use App\Models\Room;
 use App\Models\Report;
 use App\Models\ReportAssignment;
 use App\Models\ServiceUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ReportTest extends TestCase
@@ -257,7 +260,7 @@ class ReportTest extends TestCase
             'service_unit_id' => $unit->id,
             'staff_id' => $staff->id,
             'note' => 'Ditugaskan untuk pemeriksaan.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
 
         $this->assertDatabaseHas('report_assignments', [
             'report_id' => $report->id,
@@ -329,7 +332,7 @@ class ReportTest extends TestCase
         $this->actingAs($staff)->patch(route('reports.triage.update', $report), [
             'priority' => 'high',
             'reason' => 'Pemeriksaan sedang dilakukan.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
 
         $this->assertSame('assigned', $report->fresh()->status);
         $this->assertSame('high', $report->fresh()->priority);
@@ -342,7 +345,7 @@ class ReportTest extends TestCase
         $this->actingAs($staff)->post(route('reports.triage.status', $report), [
             'status' => 'in_progress',
             'note' => 'Pemeriksaan sedang dilakukan.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
         $this->assertSame('in_progress', $report->fresh()->status);
 
         $this->actingAs($staff)->post(route('reports.assignments.store', $report), [
@@ -364,7 +367,7 @@ class ReportTest extends TestCase
         $this->actingAs($manager)->patch(route('reports.triage.update', $report), [
             'priority' => 'normal',
             'reason' => 'Hasil peninjauan awal.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
 
         $this->assertSame('triaged', $report->fresh()->status);
         $this->assertDatabaseHas('report_status_histories', [
@@ -460,12 +463,12 @@ class ReportTest extends TestCase
         $this->actingAs($staff)->post(route('reports.triage.status', $report), [
             'status' => 'in_progress',
             'note' => 'Penanganan dimulai.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
 
         $this->actingAs($staff)->post(route('reports.triage.status', $report), [
             'status' => 'waiting_confirmation',
             'note' => 'Kendala sudah ditangani.',
-        ])->assertRedirect(route('reports.triage.edit', $report));
+        ])->assertRedirect(route('reports.show', $report));
 
         $this->assertSame('waiting_confirmation', $report->fresh()->status);
         $this->assertDatabaseMissing('report_status_histories', [
@@ -595,6 +598,64 @@ class ReportTest extends TestCase
         $this->assertDatabaseCount('notifications', 2);
         $this->artisan('reports:notify-overdue')->assertExitCode(0);
         $this->assertDatabaseCount('notifications', 2);
+    }
+
+    public function test_comment_can_include_a_private_attachment_and_notifies_other_participants(): void
+    {
+        Storage::fake('local');
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($report->reporter)->post(route('reports.comments.store', $report), [
+            'body' => 'Saya menambahkan bukti terbaru.',
+            'attachments' => [UploadedFile::fake()->create('bukti.png', 100, 'image/png')],
+        ])->assertRedirect(route('reports.show', $report));
+
+        $attachment = $report->comments()->firstOrFail()->attachments()->firstOrFail();
+        Storage::disk('local')->assertExists($attachment->storage_path);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $manager->id,
+            'type' => 'report.comment_added',
+        ]);
+    }
+
+    public function test_user_can_read_only_their_own_notifications(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $notification = Notification::create([
+            'user_id' => $report->reporter_id,
+            'type' => 'report.status_changed',
+            'data' => ['report_id' => $report->id, 'message' => 'Status berubah.'],
+        ]);
+        $otherUser = User::factory()->create(['role' => 'resident']);
+
+        $this->actingAs($report->reporter)->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Status berubah.')
+            ->assertSee('Ke laporan');
+        $this->actingAs($otherUser)->patch(route('notifications.read', $notification))
+            ->assertForbidden();
+        $this->actingAs($report->reporter)->patch(route('notifications.read', $notification))
+            ->assertRedirect();
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_notification_can_open_its_report_and_mark_it_read(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $notification = Notification::create([
+            'user_id' => $report->reporter_id,
+            'type' => 'report.comment_added',
+            'data' => ['report_id' => $report->id, 'message' => 'Komentar baru.'],
+        ]);
+
+        $this->actingAs($report->reporter)
+            ->get(route('notifications.open', $notification))
+            ->assertRedirect(route('reports.show', $report));
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 
     private function referenceData(): array

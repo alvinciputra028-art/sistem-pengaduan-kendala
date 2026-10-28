@@ -9,6 +9,13 @@
     <main>
         <p><a href="{{ route('reports.index') }}">Kembali ke laporan</a></p>
         @if (session('success'))<p role="status">{{ session('success') }}</p>@endif
+        @if ($errors->any())
+            <div role="alert" aria-live="assertive">
+                <ul>
+                    @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                </ul>
+            </div>
+        @endif
         <h1>{{ $report->title }}</h1>
         <p><strong>{{ $report->ticket_number }}</strong></p>
         <p>Status: {{ $report->status }} · Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
@@ -23,6 +30,9 @@
             @if ($report->estimate_note)
                 <p>Catatan estimasi: {{ $report->estimate_note }}</p>
             @endif
+        @endif
+        @if ($canTriage)
+            @include('reports.partials.triage')
         @endif
         @can('close', $report)
             <form method="POST" action="{{ route('reports.close', $report) }}">
@@ -70,11 +80,17 @@
             <h2>Komentar</h2>
             @foreach ($report->comments as $comment)
                 <p><strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}</p>
+                @foreach ($comment->attachments as $attachment)
+                    <p>Lampiran: <a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a></p>
+                @endforeach
             @endforeach
-            <form method="POST" action="{{ route('reports.comments.store', $report) }}">
+            <form method="POST" action="{{ route('reports.comments.store', $report) }}" enctype="multipart/form-data">
                 @csrf
                 <label for="comment-body">Komentar</label>
                 <textarea id="comment-body" name="body" required maxlength="5000"></textarea>
+                <label for="comment-attachments">Lampiran</label>
+                <input id="comment-attachments" type="file" name="attachments[]" accept="image/jpeg,image/png,image/webp" multiple>
+                <p id="comment-attachments-error" role="alert" hidden></p>
                 <button type="submit">Kirim komentar</button>
             </form>
         @endcan
@@ -85,5 +101,37 @@
             @endforeach
         </ul>
     </main>
+    <script>
+        const commentForm = document.querySelector('form[action="{{ route('reports.comments.store', $report) }}"]');
+        const commentAttachments = document.getElementById('comment-attachments');
+        const commentAttachmentsError = document.getElementById('comment-attachments-error');
+        const maxCommentAttachmentSize = 10 * 1024 * 1024;
+        const allowedCommentTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        function validateCommentAttachments() {
+            const files = [...commentAttachments.files];
+            let message = '';
+            if (files.length > 5) {
+                message = 'Maksimal 5 lampiran komentar dapat dipilih.';
+            } else if (files.some((file) => !allowedCommentTypes.includes(file.type))) {
+                message = 'Format lampiran harus JPG, JPEG, PNG, atau WEBP.';
+            } else if (files.some((file) => file.size > maxCommentAttachmentSize)) {
+                message = 'Ukuran setiap lampiran maksimal 10 MB.';
+            }
+            commentAttachmentsError.textContent = message;
+            commentAttachmentsError.hidden = !message;
+            commentAttachments.setCustomValidity(message);
+            return !message;
+        }
+
+        if (commentForm && commentAttachments) {
+            commentAttachments.addEventListener('change', validateCommentAttachments);
+            commentForm.addEventListener('submit', (event) => {
+                if (!validateCommentAttachments()) {
+                    event.preventDefault();
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ServiceUnit;
 use App\Models\User;
+use App\Services\ReportNotificationService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -123,7 +124,24 @@ class ReportTriageController extends Controller
             }
         });
 
-        return redirect()->route('reports.triage.edit', $report)->with('success', 'Triase laporan berhasil diperbarui.');
+        if ($priorityChanged) {
+            app(ReportNotificationService::class)->notify(
+                $report,
+                'report.priority_changed',
+                'Prioritas laporan '.$report->ticket_number.' diubah menjadi '.$report->priority.'.',
+                $request->user(),
+            );
+        }
+        if ($estimateChanged) {
+            app(ReportNotificationService::class)->notify(
+                $report,
+                'report.estimate_changed',
+                'Estimasi laporan '.$report->ticket_number.' diperbarui.',
+                $request->user(),
+            );
+        }
+
+        return redirect()->route('reports.show', $report)->with('success', 'Triase laporan berhasil diperbarui.');
     }
 
     private function normalizeDate(?string $date): ?string
@@ -157,7 +175,14 @@ class ReportTriageController extends Controller
             ]);
         });
 
-        return redirect()->route('reports.triage.edit', $report)->with('success', 'Status laporan berhasil diperbarui.');
+        app(ReportNotificationService::class)->notify(
+            $report,
+            'report.status_changed',
+            'Status laporan '.$report->ticket_number.' diubah menjadi '.$report->status.'.',
+            $request->user(),
+        );
+
+        return redirect()->route('reports.show', $report)->with('success', 'Status laporan berhasil diperbarui.');
     }
 
     public function assign(Request $request, Report $report): RedirectResponse
@@ -208,7 +233,14 @@ class ReportTriageController extends Controller
             }
         });
 
-        return redirect()->route('reports.triage.edit', $report)->with('success', 'Laporan berhasil ditugaskan.');
+        app(ReportNotificationService::class)->notify(
+            $report,
+            'report.assigned',
+            'Laporan '.$report->ticket_number.' ditugaskan kepada '.$staff->name.'.',
+            $request->user(),
+        );
+
+        return redirect()->route('reports.show', $report)->with('success', 'Laporan berhasil ditugaskan.');
     }
 
     private function authorizeTriage(Request $request, Report $report): void

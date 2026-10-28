@@ -405,24 +405,39 @@ Suite terakhir: **31 test lulus, 125 assertion lulus**.
 
 ### Tahap 4: percakapan dan notifikasi
 
-- Lampiran pada komentar.
-- Notifikasi in-app dan status dibaca.
-- Notifikasi kepada pelapor saat status, assignment, atau estimasi berubah.
+- ✅ Lampiran gambar pada komentar dengan validasi dan akses privat.
+- ✅ Notifikasi in-app dan aksi tandai sudah dibaca.
+- ✅ Notifikasi kepada pelapor, petugas aktif, dan manajer saat status,
+  assignment, prioritas, estimasi, atau komentar berubah.
 - Email setelah notifikasi in-app stabil.
 - Polling atau WebSocket hanya bila diperlukan.
 
+### Perbaikan operasional setelah Tahap 4
+
+- ✅ Notifikasi SLA memicu peringatan estimasi respons yang terlewati ketika
+  status masih `submitted`, `triaged`, atau `assigned`.
+- ✅ Notifikasi SLA memicu peringatan estimasi penyelesaian yang terlewati
+  selama laporan belum `waiting_confirmation` atau `closed`.
+- ✅ Zona waktu aplikasi menggunakan WIB (`Asia/Jakarta`).
+- ✅ Validasi lampiran komentar tampil segera di browser dan tetap divalidasi
+  di server dengan pesan berbeda untuk jumlah, format, dan ukuran file.
+- ✅ Aksi triase digabung ke detail laporan untuk staff yang di-assign dan
+  manager; halaman triase lama tetap tersedia sebagai kompatibilitas.
+- ✅ Notifikasi memiliki akses cepat `Ke laporan` yang membuka detail laporan
+  terkait sekaligus menandainya sudah dibaca.
+
 ### Pesan commit yang disarankan
 
-`feat: implement complaint reporting workflow with queue and SLA notifications`
+`feat: complete notifications, uploads, SLA, and inline triage`
 
 ### Status terbaru dan tahap selanjutnya
 
-Tahap 3 selesai untuk cakupan MVP. Antrean kerja dan daftar laporan kini
+Tahap 3 dan Tahap 4 selesai untuk cakupan MVP. Antrean kerja dan daftar laporan
 menggunakan satu halaman dengan mode operasional berdasarkan role; route lama
 `/queue` tetap tersedia sebagai alias kompatibilitas untuk staff dan manager.
-Tahap berikutnya adalah Tahap 4: melengkapi percakapan dan notifikasi, terutama
-lampiran komentar, status notifikasi dibaca, serta notifikasi perubahan status,
-assignment, dan estimasi kepada pelapor.
+Tahap berikutnya adalah menyelesaikan email setelah notifikasi in-app stabil,
+kemudian mengevaluasi polling atau WebSocket hanya bila kebutuhan operasional
+memang memerlukannya. Setelah itu dapat dilanjutkan ke Tahap 5: fitur komunitas.
 
 ### Tahap 5: komunitas
 
