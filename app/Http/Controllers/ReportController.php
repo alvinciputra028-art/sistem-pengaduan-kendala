@@ -41,6 +41,12 @@ class ReportController extends Controller
                 ->with(['assignments' => fn ($assignment) => $assignment
                     ->whereNull('unassigned_at')
                     ->with(['serviceUnit', 'staff'])])
+                ->when($user->role === 'manager', fn (Builder $query) => $query->with([
+                    'moderationReports' => fn ($moderation) => $moderation
+                        ->where('status', 'open')
+                        ->with(['reportedBy', 'reviewedBy']),
+                    'reporter',
+                ]))
                 ->when($user->role === 'staff', fn (Builder $query) => $query->whereHas(
                     'assignments',
                     fn (Builder $assignment) => $assignment
@@ -79,6 +85,15 @@ class ReportController extends Controller
                 : collect(),
             'serviceUnits' => in_array($user->role, ['manager', 'staff'], true)
                 ? ServiceUnit::query()->where('is_active', true)->orderBy('name')->get()
+                : collect(),
+            'duplicateCandidates' => $user->role === 'manager'
+                ? Report::query()
+                    ->where('visibility', 'public_building')
+                    ->whereNull('duplicate_of_report_id')
+                    ->with('building')
+                    ->latest()
+                    ->limit(100)
+                    ->get()
                 : collect(),
         ]);
     }

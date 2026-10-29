@@ -81,9 +81,33 @@ WhatsApp. Implementasinya aman jika mengikuti batasan berikut:
   tetap dapat berkomunikasi internal dan resident lain tidak dapat menulis
   maupun melaporkan komentar. Laporan `closed` menjadi read-only untuk semua
   pihak.
-- Notifikasi hanya dikirim kepada peserta yang relevan dan dapat dimatikan
-  oleh pengguna. Jangan mengirim isi percakapan ke kanal eksternal secara
-  otomatis.
+- Notifikasi komentar hanya dikirim kepada peserta yang relevan dan dapat
+  dimatikan oleh pengguna. Notifikasi moderasi laporan, duplikat, dan komentar
+  hanya dikirim kepada manager aktif. Jangan mengirim isi percakapan ke kanal
+  eksternal secara otomatis.
+
+### Moderasi laporan komunitas
+
+- Notifikasi tentang laporan komunitas atau flag duplikat hanya dikirim kepada
+  manager aktif. Pelapor, penghuni lain, dan staff terkait tidak menerima
+  notifikasi moderasi tersebut.
+- Manager dapat melihat identitas pengaju laporan/flag, identitas pelapor
+  laporan, alasan, catatan, waktu, dan laporan utama atau duplikat yang
+  terkait.
+- Manager tidak seharusnya melaporkan atau menandai duplikat lalu memoderasi
+  flag miliknya sendiri. Aturan ini akan ditegakkan melalui policy.
+- Moderasi dilakukan langsung dari daftar laporan/antrean melalui panel aksi
+  dan detail flag. Halaman khusus “Moderasi Komunitas” tidak lagi menjadi
+  alur utama dan dapat dihapus setelah seluruh tautan serta notifikasinya
+  dialihkan ke daftar laporan/antrean.
+
+### Daftar lampiran
+
+Menampilkan nama setiap file yang dipilih, bukan hanya jumlah file, masuk akal
+dan memperbaiki pencegahan salah unggah. Setiap nama file memiliki tombol
+hapus/minus untuk mengeluarkannya dari daftar sebelum form dikirim. Daftar ini
+harus tetap tunduk pada batas maksimal lima gambar, format yang diizinkan,
+ukuran maksimal 10 MB per file, serta validasi server.
 
 Aturan tersebut sekarang diterapkan menggunakan `report_comments` dan
 `report_acknowledgements`: penghuni harus memilih **“Saya juga mengalami”**
@@ -380,8 +404,8 @@ dikosongkan.
 | 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, dashboard dasar, dan migration tersedia. |
 | 2. Tiket inti | ✅ Selesai untuk cakupan MVP | Pembuatan laporan, lokasi, visibilitas, assignment, lampiran, validasi akses, estimasi, dan histori tersedia. |
 | 3. Triase dan prioritas | 🟢 Selesai untuk MVP | Skor prioritas, triase, assignment, estimasi, antrean kerja, SLA, dan transisi status tersedia. |
-| 4. Percakapan dan notifikasi | 🟢 MVP selesai | Komentar, lampiran komentar, notifikasi in-app, dan status dibaca tersedia; email serta real-time masih opsional. |
-| 5. Fitur komunitas | 🟢 Selesai untuk MVP | Feed publik, “saya juga mengalami”, percakapan terikat laporan, pelaporan komentar, moderasi, dan penanganan duplikasi tersedia. |
+| 4. Percakapan dan notifikasi | 🟢 Selesai untuk MVP | Komentar, lampiran komentar, notifikasi in-app, status dibaca, pembatasan moderasi, dan notifikasi manager-only tersedia; email serta real-time masih opsional. |
+| 5. Fitur komunitas | 🟢 Selesai untuk MVP | Feed publik, “saya juga mengalami”, percakapan terikat laporan, pelaporan komentar, moderasi komentar, serta moderasi laporan/duplikat inline tersedia. |
 
 ### Implementasi yang sudah tersedia
 
@@ -397,6 +421,14 @@ dikosongkan.
   mengalami”, pelaporan komentar, penyembunyian komentar, serta tombol
   aktif/nonaktif percakapan oleh manager. Komentar yang disembunyikan dapat
   dipulihkan kembali oleh manager dengan jejak moderasi tetap tersimpan.
+- Notifikasi pelaporan komentar hanya untuk manager dan mencantumkan
+  identitas serta ringkasan komentar yang dilaporkan.
+- Moderasi komunitas pada halaman daftar laporan/antrean menampilkan pelapor,
+  pengaju flag, alasan, catatan, kandidat laporan utama, dan aksi konfirmasi,
+  penolakan, sembunyikan, pulihkan, atau batalkan duplikat. Halaman lama
+  “Moderasi Komunitas” mengarahkan pengguna ke daftar laporan.
+- Input lampiran laporan dan komentar menampilkan nama file yang dipilih serta
+  tombol hapus/minus sebelum submit.
 - PHPUnit menggunakan SQLite in-memory agar tidak bergantung pada MySQL lokal.
 
 ## Skenario pengujian inti dan komunitas
@@ -446,16 +478,13 @@ Perintah validasi:
 php artisan test
 ```
 
-Suite terakhir: **50 test lulus, 208 assertion lulus**.
+Suite terakhir: **55 test lulus, 235 assertion lulus**.
 
 ## Backlog berikutnya
 
 - Menyelesaikan email setelah notifikasi in-app stabil.
 - Mengevaluasi polling atau WebSocket hanya jika kebutuhan operasional memang
   memerlukannya.
-- Menjalankan migration fitur percakapan pada database MySQL pengembangan
-  sebelum menggunakan tombol moderasi:
-  `php artisan migrate`.
 
 Tidak ada Tahap 6 migrasi data lama. Sistem baru dimulai dengan data baru;
 database lama dan data dummy tidak perlu diimpor, dipetakan, atau dipertahankan

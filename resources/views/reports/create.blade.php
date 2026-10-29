@@ -96,6 +96,7 @@
             <label for="attachments">Bukti gambar (maks. 5, 10 MB per file)</label>
             <input id="attachments" type="file" name="attachments[]" accept="image/jpeg,image/png,image/webp" multiple>
             <p id="attachments-error" role="alert" hidden></p>
+            <ul id="attachment-list"></ul>
             <br>
             <button type="submit">Kirim laporan</button>
         </form>
@@ -113,6 +114,7 @@
         const attachmentsError = document.getElementById('attachments-error');
         const reportForm = document.getElementById('report-form');
         const maxAttachmentSize = 10 * 1024 * 1024;
+        const attachmentList = document.getElementById('attachment-list');
 
         function updateLocationFields() {
             const isRoom = locationType.value === 'room';
@@ -140,17 +142,48 @@
         }
 
         function validateAttachments() {
-            const invalid = [...attachments.files].some((file) => file.size > maxAttachmentSize);
-            attachmentsError.textContent = invalid
-                ? 'Setiap gambar harus berukuran maksimal 10 MB.'
-                : '';
-            attachmentsError.hidden = !invalid;
-            attachments.setCustomValidity(invalid ? 'Ukuran gambar terlalu besar.' : '');
-            return !invalid;
+            const files = [...attachments.files];
+            let message = '';
+            if (files.length > 5) {
+                message = 'Maksimal 5 lampiran dapat dipilih.';
+            } else if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type))) {
+                message = 'Format lampiran harus JPG, JPEG, PNG, atau WEBP.';
+            } else if (files.some((file) => file.size > maxAttachmentSize)) {
+                message = 'Setiap gambar harus berukuran maksimal 10 MB.';
+            }
+            attachmentsError.textContent = message;
+            attachmentsError.hidden = !message;
+            attachments.setCustomValidity(message);
+            return !message;
+        }
+
+        function renderAttachmentList() {
+            attachmentList.replaceChildren();
+            [...attachments.files].forEach((file, index) => {
+                const item = document.createElement('li');
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.textContent = '−';
+                remove.setAttribute('aria-label', `Hapus ${file.name}`);
+                remove.addEventListener('click', () => {
+                    const dataTransfer = new DataTransfer();
+                    [...attachments.files].forEach((current, currentIndex) => {
+                        if (currentIndex !== index) dataTransfer.items.add(current);
+                    });
+                    attachments.files = dataTransfer.files;
+                    renderAttachmentList();
+                    validateAttachments();
+                });
+                item.append(document.createTextNode(file.name + ' '), remove);
+                attachmentList.append(item);
+            });
         }
 
         locationDescriptionInput.addEventListener('input', validateLocationDescription);
-        attachments.addEventListener('change', validateAttachments);
+        attachments.addEventListener('change', () => {
+            renderAttachmentList();
+            validateAttachments();
+        });
         reportForm.addEventListener('submit', (event) => {
             if (!validateLocationDescription() || !validateAttachments()) {
                 event.preventDefault();

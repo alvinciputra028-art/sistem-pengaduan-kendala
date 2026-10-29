@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportAcknowledgement;
 use App\Models\ReportModerationReport;
-use App\Services\ReportNotificationService;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,20 +34,10 @@ class CommunityController extends Controller
         return view('community.index', compact('reports'));
     }
 
-    public function moderation(Request $request): View
+    public function moderation(Request $request): RedirectResponse
     {
         abort_unless($request->user()->role === 'manager', 403);
-
-        $reports = Report::query()
-            ->where(function (Builder $query): void {
-                $query->whereNotNull('community_hidden_at')
-                    ->orWhereHas('moderationReports', fn (Builder $moderation) => $moderation->where('status', 'open'));
-            })
-            ->with(['building', 'moderationReports' => fn ($query) => $query->where('status', 'open')])
-            ->latest()
-            ->paginate(15);
-
-        return view('community.moderation', compact('reports'));
+        return redirect()->route('reports.index');
     }
 
     public function acknowledge(Request $request, Report $report): RedirectResponse
@@ -80,12 +71,7 @@ class CommunityController extends Controller
             ],
         );
 
-        app(ReportNotificationService::class)->notify(
-            $report,
-            'report.community_reported',
-            'Laporan '.$report->ticket_number.' dilaporkan untuk ditinjau.',
-            $request->user(),
-        );
+        $this->notifyManagers($report, $request->user(), 'Laporan komunitas dilaporkan.');
 
         return back()->with('success', 'Laporan komunitas dikirim untuk ditinjau.');
     }
@@ -104,12 +90,7 @@ class CommunityController extends Controller
             'reviewed_at' => null,
         ]);
 
-        app(ReportNotificationService::class)->notify(
-            $report,
-            'report.community_reported',
-            'Laporan '.$report->ticket_number.' ditandai sebagai duplikat untuk ditinjau.',
-            $request->user(),
-        );
+        $this->notifyManagers($report, $request->user(), 'Laporan ditandai sebagai duplikat.');
 
         return back()->with('success', 'Laporan ditandai untuk ditinjau sebagai duplikat.');
     }
@@ -220,7 +201,27 @@ class CommunityController extends Controller
             return;
         }
 
-        abort_unless(in_array($user->role, ['staff', 'manager'], true), 403);
+        abort_unless($user->role === 'staff', 403);
         $this->authorize('view', $report);
+    }
+
+    private function notifyManagers(Report $report, User $actor, string $action): void
+    {
+        $message = $action.' Pelapor: '.$report->reporter->name
+            .'. Pengaju: '.$actor->name.'. Tiket: '.$report->ticket_number.'.';
+
+        foreach (User::query()->where('role', 'manager')->where('is_active', true)->get() as $manager) {
+            Notification::create([
+                'user_id' => $manager->id,
+                'type' => 'report.community_reported',
+                'data' => [
+                    'report_id' => $report->id,
+                    'reported_by' => $actor->id,
+                    'reporter_id' => $report->reporter_id,
+                    'ticket_number' => $report->ticket_number,
+                    'message' => $message,
+                ],
+            ]);
+        }
     }
 }

@@ -66,7 +66,7 @@
                     @if ($report->assignments->first())
                         <p>{{ $report->assignments->first()->serviceUnit->name }} — {{ $report->assignments->first()->staff?->name ?? 'Belum ada petugas' }}</p>
                     @endif
-                    @if ($report->reporter_id !== auth()->id())
+                    @if (auth()->user()->role === 'staff' && $report->reporter_id !== auth()->id())
                         <form method="POST" action="{{ route('community.report', $report) }}">
                             @csrf
                             <label for="report-reason-{{ $report->id }}">Laporkan untuk moderasi</label>
@@ -83,6 +83,47 @@
                             @csrf
                             <button type="submit">Tandai duplikat</button>
                         </form>
+                    @endif
+                    @if (auth()->user()->role === 'manager')
+                        @foreach ($report->moderationReports as $moderation)
+                            <details>
+                                <summary>Flag komunitas: {{ $moderation->reason }}</summary>
+                                <p>Pelapor laporan: {{ $report->reporter->name }}</p>
+                                <p>Pengaju flag: {{ $moderation->reportedBy->name }}</p>
+                                <p>Dibuat: {{ $moderation->created_at->format('d/m/Y H:i') }}</p>
+                                @if ($moderation->note)<p>Catatan: {{ $moderation->note }}</p>@endif
+                                @if ($moderation->reason === 'duplicate')
+                                    <form method="POST" action="{{ route('community.review', $report) }}">
+                                        @csrf
+                                        <input type="hidden" name="action" value="dismiss_duplicate">
+                                        <button type="submit">Tolak duplikat</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('community.review', $report) }}">
+                                        @csrf
+                                        <input type="hidden" name="action" value="confirm_duplicate">
+                                        <label for="canonical-{{ $report->id }}-{{ $moderation->id }}">Laporan utama</label>
+                                        <select id="canonical-{{ $report->id }}-{{ $moderation->id }}" name="duplicate_of_report_id" required>
+                                            <option value="">Pilih laporan utama</option>
+                                            @foreach ($duplicateCandidates->where('building_id', $report->building_id)->where('id', '!=', $report->id) as $canonical)
+                                                <option value="{{ $canonical->id }}">{{ $canonical->ticket_number }} — {{ $canonical->title }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit">Konfirmasi duplikat</button>
+                                    </form>
+                                @endif
+                            </details>
+                        @endforeach
+                        @if ($report->community_hidden_at)
+                            <form method="POST" action="{{ $report->duplicate_of_report_id ? route('community.cancel-duplicate', $report) : route('community.restore', $report) }}">
+                                @csrf
+                                <button type="submit">{{ $report->duplicate_of_report_id ? 'Batalkan status duplikat' : 'Tampilkan kembali di komunitas' }}</button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('community.hide', $report) }}">
+                                @csrf
+                                <button type="submit">Sembunyikan dari komunitas</button>
+                            </form>
+                        @endif
                     @endif
                 @endif
             </article>

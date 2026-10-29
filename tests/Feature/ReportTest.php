@@ -62,6 +62,26 @@ class ReportTest extends TestCase
         ]);
     }
 
+    public function test_attachment_inputs_show_file_list_and_remove_controls(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+
+        $this->actingAs($resident)->get(route('reports.create'))
+            ->assertOk()
+            ->assertSee('attachment-list')
+            ->assertSee('DataTransfer');
+        $this->actingAs($report->reporter)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('comment-attachment-list')
+            ->assertSee('DataTransfer');
+    }
+
     public function test_room_report_uses_reporters_room_and_rejects_another_room(): void
     {
         [$building, $room, $category] = $this->referenceData();
@@ -958,7 +978,7 @@ class ReportTest extends TestCase
             'reason' => 'duplicate',
             'status' => 'open',
         ]);
-        $this->assertDatabaseHas('notifications', [
+        $this->assertDatabaseMissing('notifications', [
             'user_id' => $report->reporter_id,
             'type' => 'report.community_reported',
         ]);
@@ -967,8 +987,7 @@ class ReportTest extends TestCase
             'type' => 'report.community_reported',
         ]);
         $this->actingAs($manager)->get(route('community.moderation'))
-            ->assertOk()
-            ->assertSee($report->title);
+            ->assertRedirect(route('reports.index'));
     }
 
     public function test_duplicate_flag_reopens_resolved_flag_for_manager_review(): void
@@ -1022,7 +1041,7 @@ class ReportTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_staff_and_manager_can_flag_accessible_reports_from_reports_page(): void
+    public function test_staff_can_flag_accessible_reports_from_reports_page_but_manager_cannot(): void
     {
         [$building, $room, $category] = $this->referenceData();
         $report = $this->makeReport($building, $room, $category, 'assigned');
@@ -1038,8 +1057,10 @@ class ReportTest extends TestCase
 
         $this->actingAs($manager)->get(route('reports.index'))
             ->assertOk()
-            ->assertSee('Laporkan untuk moderasi')
-            ->assertSee('Tandai duplikat');
+            ->assertDontSee('Laporkan untuk moderasi')
+            ->assertDontSee('Tandai duplikat');
+        $this->actingAs($manager)->post(route('community.duplicate', $report))
+            ->assertForbidden();
         $this->actingAs($staff)->post(route('community.duplicate', $report))
             ->assertRedirect();
         $this->assertDatabaseHas('report_moderation_reports', [
@@ -1061,10 +1082,9 @@ class ReportTest extends TestCase
         ]);
 
         $this->actingAs($manager)->get(route('notifications.index'))
-            ->assertSee('Ke Moderasi')
-            ->assertDontSee('Ke laporan');
+            ->assertSee('Ke laporan');
         $this->actingAs($manager)->get(route('notifications.open', $notification))
-            ->assertRedirect(route('community.moderation'));
+            ->assertRedirect(route('reports.index'));
         $this->assertNotNull($notification->fresh()->read_at);
     }
 
@@ -1141,7 +1161,8 @@ class ReportTest extends TestCase
 
         $this->actingAs($resident)->get(route('community.moderation'))->assertForbidden();
         $this->actingAs($staff)->get(route('community.moderation'))->assertForbidden();
-        $this->actingAs($manager)->get(route('community.moderation'))->assertOk();
+        $this->actingAs($manager)->get(route('community.moderation'))
+            ->assertRedirect(route('reports.index'));
     }
 
     private function referenceData(): array

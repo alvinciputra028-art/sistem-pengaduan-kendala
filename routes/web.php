@@ -32,7 +32,9 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/community', [CommunityController::class, 'index'])->name('community.index');
-    Route::get('/community/moderation', [CommunityController::class, 'moderation'])->name('community.moderation');
+    Route::get('/community/moderation', [CommunityController::class, 'moderation'])
+        ->middleware('role:manager')
+        ->name('community.moderation');
     Route::post('/community/{report}/acknowledge', [CommunityController::class, 'acknowledge'])->name('community.acknowledge');
     Route::post('/community/{report}/report', [CommunityController::class, 'report'])->name('community.report');
     Route::post('/community/{report}/duplicate', [CommunityController::class, 'duplicate'])->name('community.duplicate');

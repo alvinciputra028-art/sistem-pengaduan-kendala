@@ -29,4 +29,14 @@ class ReportModerationReport extends Model
     {
         return $this->belongsTo(Report::class);
     }
+
+    public function reportedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reported_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

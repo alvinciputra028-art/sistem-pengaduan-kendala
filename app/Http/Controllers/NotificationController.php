@@ -37,7 +37,7 @@ class NotificationController extends Controller
         if ($notification->type === 'report.community_reported' && $request->user()->role === 'manager') {
             $notification->update(['read_at' => $notification->read_at ?? now()]);
 
-            return redirect()->route('community.moderation');
+            return redirect()->route('reports.index');
         }
         $this->authorize('view', $report);
         $notification->update(['read_at' => $notification->read_at ?? now()]);

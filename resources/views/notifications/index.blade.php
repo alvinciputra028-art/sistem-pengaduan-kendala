@@ -19,7 +19,7 @@
                 <p>{{ $notification->created_at->format('d/m/Y H:i') }}</p>
                 @if (isset($notification->data['report_id']))
                     <a href="{{ route('notifications.open', $notification) }}">
-                        {{ $notification->type === 'report.community_reported' && auth()->user()->role === 'manager' ? 'Ke Moderasi' : 'Ke laporan' }}
+                        Ke laporan
                     </a>
                 @elseif (!$notification->read_at)
                     <form method="POST" action="{{ route('notifications.read', $notification) }}">

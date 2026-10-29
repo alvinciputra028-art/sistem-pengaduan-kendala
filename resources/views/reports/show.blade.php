@@ -164,6 +164,7 @@
                 <label for="comment-attachments">Lampiran</label>
                 <input id="comment-attachments" type="file" name="attachments[]" accept="image/jpeg,image/png,image/webp" multiple>
                 <p id="comment-attachments-error" role="alert" hidden></p>
+                <ul id="comment-attachment-list"></ul>
                 <button type="submit">Kirim komentar</button>
             </form>
         @endcan
@@ -180,6 +181,7 @@
         const commentAttachmentsError = document.getElementById('comment-attachments-error');
         const maxCommentAttachmentSize = 10 * 1024 * 1024;
         const allowedCommentTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const commentAttachmentList = document.getElementById('comment-attachment-list');
 
         function validateCommentAttachments() {
             const files = [...commentAttachments.files];
@@ -197,8 +199,33 @@
             return !message;
         }
 
+        function renderCommentAttachmentList() {
+            commentAttachmentList.replaceChildren();
+            [...commentAttachments.files].forEach((file, index) => {
+                const item = document.createElement('li');
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.textContent = '−';
+                remove.setAttribute('aria-label', `Hapus ${file.name}`);
+                remove.addEventListener('click', () => {
+                    const dataTransfer = new DataTransfer();
+                    [...commentAttachments.files].forEach((current, currentIndex) => {
+                        if (currentIndex !== index) dataTransfer.items.add(current);
+                    });
+                    commentAttachments.files = dataTransfer.files;
+                    renderCommentAttachmentList();
+                    validateCommentAttachments();
+                });
+                item.append(document.createTextNode(file.name + ' '), remove);
+                commentAttachmentList.append(item);
+            });
+        }
+
         if (commentForm && commentAttachments) {
-            commentAttachments.addEventListener('change', validateCommentAttachments);
+            commentAttachments.addEventListener('change', () => {
+                renderCommentAttachmentList();
+                validateCommentAttachments();
+            });
             commentForm.addEventListener('submit', (event) => {
                 if (!validateCommentAttachments()) {
                     event.preventDefault();
