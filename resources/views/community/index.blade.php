@@ -16,6 +16,7 @@
                 <p>{{ $report->building->name }} · {{ $report->category->name }} · {{ $report->status }}</p>
                 <p>{{ $report->description }}</p>
                 <p>{{ $report->acknowledgements_count }} penghuni juga mengalami</p>
+                <p><a href="{{ route('reports.show', $report) }}">Buka percakapan komunitas</a></p>
                 @if (auth()->user()->role === 'resident' && $report->reporter_id !== auth()->id() && !$report->acknowledgements->contains('user_id', auth()->id()))
                     <form method="POST" action="{{ route('community.acknowledge', $report) }}">
                         @csrf

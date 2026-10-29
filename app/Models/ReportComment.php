@@ -45,6 +45,11 @@ class ReportComment extends Model
         return $this->hasMany(Attachment::class, 'comment_id');
     }
 
+    public function moderationReports(): HasMany
+    {
+        return $this->hasMany(ReportCommentModerationReport::class, 'comment_id');
+    }
+
     protected static function booted(): void
     {
         static::addGlobalScope('not_deleted', function ($query): void {

@@ -2,7 +2,7 @@
 
 Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
 pengujian, dan backlog proyek Laravel ini. Status terakhir diperbarui pada
-**28 Oktober 2026**.
+**29 Oktober 2026**.
 
 ## Keputusan arsitektur
 
@@ -50,6 +50,46 @@ pengujian, dan backlog proyek Laravel ini. Status terakhir diperbarui pada
 Identitas dan nomor kamar penghuni hanya ditampilkan sesuai kebutuhan:
 manajer dan petugas yang di-assign dapat melihat detail operasional, sedangkan
 penghuni lain tidak melihat nomor kamar.
+
+### Percakapan komunitas pada laporan publik
+
+Gagasan chat grup pada laporan publik masuk akal karena dapat mengumpulkan
+informasi dari penghuni yang mengalami kendala serupa dan mengurangi laporan
+duplikat. Namun, fitur ini sebaiknya diperlakukan sebagai **thread percakapan
+termoderasi yang terikat pada satu laporan**, bukan grup bebas seperti
+WhatsApp. Implementasinya aman jika mengikuti batasan berikut:
+
+- Hanya laporan `public_building` yang dapat memiliki percakapan komunitas.
+- Pelapor, penghuni gedung yang memilih **“Saya juga mengalami”**, petugas
+  yang memiliki assignment aktif, dan manajer dapat berpartisipasi sesuai
+  policy. Penghuni tidak otomatis ditambahkan ke percakapan.
+- Pengguna lain tidak dapat melihat nomor kamar, nomor telepon, alamat, atau
+  detail privat pelapor. Identitas anonim tetap mengikuti
+  `identity_visibility`.
+- Komentar divalidasi sebagai teks biasa dengan batas panjang, rate limit, dan
+  sanitasi output. Lampiran komentar tetap privat dan mengikuti policy laporan.
+- Resident dan staff yang memiliki akses laporan dapat melaporkan komentar
+  dengan alasan dan catatan tambahan. Manager menerima notifikasi yang
+  menyebutkan ID, isi ringkas, pelapor, dan laporan komentar tersebut.
+- Manager dapat menyembunyikan komentar, menonaktifkan percakapan, dan
+  mencatat alasan serta pelakunya. Penghapusan tidak menghilangkan jejak audit
+  dan komentar dapat dipulihkan manager.
+- Percakapan hanya dapat dinonaktifkan pada status `submitted`, `triaged`,
+  `assigned`, `in_progress`, `waiting_confirmation`, atau `reopened`; laporan
+  `closed` tidak dapat dinonaktifkan.
+  Penonaktifan hanya membatasi resident lain; pelapor dan staff yang di-assign
+  tetap dapat berkomunikasi internal dan resident lain tidak dapat menulis
+  maupun melaporkan komentar. Laporan `closed` menjadi read-only untuk semua
+  pihak.
+- Notifikasi hanya dikirim kepada peserta yang relevan dan dapat dimatikan
+  oleh pengguna. Jangan mengirim isi percakapan ke kanal eksternal secara
+  otomatis.
+
+Aturan tersebut sekarang diterapkan menggunakan `report_comments` dan
+`report_acknowledgements`: penghuni harus memilih **“Saya juga mengalami”**
+sebelum dapat menulis komentar. Pengujian mencakup isolasi antar-gedung,
+kebocoran identitas, pelaporan resident/staff, detail moderasi, akses
+lampiran, penonaktifan percakapan, dan kondisi laporan ditutup.
 
 ## Alur status
 
@@ -202,6 +242,8 @@ Unique key: `building_id` + `room_number`.
 | `resolved_at` | timestamp, nullable | Waktu petugas menyatakan selesai. |
 | `closed_at` | timestamp, nullable | Waktu laporan dikonfirmasi/ditutup. |
 | `retained_until` | timestamp, nullable | Batas retensi, dua tahun setelah ditutup. |
+| `community_chat_disabled_at` | timestamp, nullable | Waktu percakapan komunitas dinonaktifkan. |
+| `community_chat_disabled_by` | FK `users`, nullable | Manager yang menonaktifkan percakapan. |
 | `created_at`, `updated_at` | timestamps | Audit waktu. |
 
 Index tambahan: `building_id` + `visibility` dan `reporter_id` + `status`.
@@ -241,7 +283,15 @@ Index: `report_id` + `unassigned_at` dan `staff_id` + `unassigned_at`.
 Index: `report_id` + `created_at`.
 
 `report_comments` digunakan untuk percakapan pada laporan. Komentar yang
-terhapus tidak ditampilkan oleh model aplikasi.
+terhapus tidak ditampilkan oleh model aplikasi. Pada laporan publik, penghuni
+harus lebih dulu memilih “Saya juga mengalami” untuk dapat menulis komentar.
+
+### `report_comment_moderation_reports`
+
+Menyimpan laporan komentar oleh penghuni, termasuk alasan, status penanganan,
+manager peninjau, dan waktu peninjauan. Komentar yang dimoderasi disembunyikan
+secara soft delete dengan `deleted_by` dan `deleted_at`, sehingga jejak audit
+tetap tersedia.
 
 ### `attachments`
 
@@ -329,24 +379,27 @@ dikosongkan.
 | 0. Kebijakan akses dan alur | ✅ Selesai untuk aturan inti | Policy terpusat, pembatasan status, close/reopen, prioritas, retensi, dan histori sudah tersedia. |
 | 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, dashboard dasar, dan migration tersedia. |
 | 2. Tiket inti | ✅ Selesai untuk cakupan MVP | Pembuatan laporan, lokasi, visibilitas, assignment, lampiran, validasi akses, estimasi, dan histori tersedia. |
-| 3. Triase dan prioritas | 🟢 MVP selesai | Skor prioritas, triase, assignment, estimasi, dan transisi status tersedia; antrean/SLA masih perlu pengembangan. |
-| 4. Percakapan dan notifikasi | 🟡 Dasar tersedia | Komentar teks dan endpoint komentar tersedia; notifikasi, attachment komentar, dan status dibaca belum lengkap. |
-| 5. Fitur komunitas | 🔴 Belum dimulai | Feed publik khusus, “saya juga mengalami”, moderasi, dan duplikasi belum tersedia. |
-| 6. Migrasi data lama | 🔴 Belum dimulai | Importer, pemetaan legacy, rekonsiliasi, dan mode read-only belum tersedia. |
+| 3. Triase dan prioritas | 🟢 Selesai untuk MVP | Skor prioritas, triase, assignment, estimasi, antrean kerja, SLA, dan transisi status tersedia. |
+| 4. Percakapan dan notifikasi | 🟢 MVP selesai | Komentar, lampiran komentar, notifikasi in-app, dan status dibaca tersedia; email serta real-time masih opsional. |
+| 5. Fitur komunitas | 🟢 Selesai untuk MVP | Feed publik, “saya juga mengalami”, percakapan terikat laporan, pelaporan komentar, moderasi, dan penanganan duplikasi tersedia. |
 
 ### Implementasi yang sudah tersedia
 
-- 17 route web untuk autentikasi, dashboard, laporan, triase, komentar,
-  penutupan/pembukaan kembali, assignment, dan akses lampiran.
+- Route web untuk autentikasi, dashboard, laporan, triase, komentar,
+  penutupan/pembukaan kembali, assignment, komunitas, dan akses lampiran.
 - Policy `ReportPolicy`, `ReportCommentPolicy`, dan `AttachmentPolicy`.
 - Validasi upload maksimal lima gambar, MIME gambar, dan 10 MB per file.
 - Validasi kamar terhadap gedung penghuni.
 - Retensi dua tahun untuk laporan dan lampiran.
 - Histori status dan histori perubahan prioritas.
 - Tampilan estimasi respons, estimasi selesai, dan catatan estimasi.
+- Percakapan komunitas publik dengan keanggotaan melalui “Saya juga
+  mengalami”, pelaporan komentar, penyembunyian komentar, serta tombol
+  aktif/nonaktif percakapan oleh manager. Komentar yang disembunyikan dapat
+  dipulihkan kembali oleh manager dengan jejak moderasi tetap tersimpan.
 - PHPUnit menggunakan SQLite in-memory agar tidak bergantung pada MySQL lokal.
 
-## Skenario pengujian Tahap 0 dan Tahap 2
+## Skenario pengujian inti dan komunitas
 
 Gunakan data uji: dua gedung, dua penghuni dalam gedung yang sama, satu
 penghuni gedung lain, satu manajer, satu petugas assigned, satu petugas
@@ -384,6 +437,8 @@ Kriteria penerimaan:
 3. `closed` hanya dicapai dari `waiting_confirmation`.
 4. Laporan tertutup tidak menerima komentar baru.
 5. Retensi laporan dan lampiran konsisten serta di-reset saat reopen.
+6. Percakapan publik terisolasi antar-gedung, memerlukan acknowledgement,
+   dapat dimoderasi, dan menjadi read-only saat dinonaktifkan atau ditutup.
 
 Perintah validasi:
 
@@ -391,104 +446,25 @@ Perintah validasi:
 php artisan test
 ```
 
-Suite terakhir: **31 test lulus, 125 assertion lulus**.
+Suite terakhir: **50 test lulus, 208 assertion lulus**.
 
 ## Backlog berikutnya
 
-### Tahap 3: antrean dan SLA
+- Menyelesaikan email setelah notifikasi in-app stabil.
+- Mengevaluasi polling atau WebSocket hanya jika kebutuhan operasional memang
+  memerlukannya.
+- Menjalankan migration fitur percakapan pada database MySQL pengembangan
+  sebelum menggunakan tombol moderasi:
+  `php artisan migrate`.
 
-- ✅ Dashboard antrean kerja berdasarkan gedung, unit, status, prioritas, dan usia.
-- ✅ Filter kerja untuk manajer dan petugas; petugas hanya melihat assignment aktif.
-- ✅ Histori estimasi dan alasan perubahan estimasi.
-- ✅ Command terjadwal untuk notifikasi ketika estimasi respons atau penyelesaian
-  terlewati, dengan pencegahan notifikasi duplikat.
-
-### Tahap 4: percakapan dan notifikasi
-
-- ✅ Lampiran gambar pada komentar dengan validasi dan akses privat.
-- ✅ Notifikasi in-app dan aksi tandai sudah dibaca.
-- ✅ Notifikasi kepada pelapor, petugas aktif, dan manajer saat status,
-  assignment, prioritas, estimasi, atau komentar berubah.
-- Email setelah notifikasi in-app stabil.
-- Polling atau WebSocket hanya bila diperlukan.
-
-### Perbaikan operasional setelah Tahap 4
-
-- ✅ Notifikasi SLA memicu peringatan estimasi respons yang terlewati ketika
-  status masih `submitted`, `triaged`, atau `assigned`.
-- ✅ Notifikasi SLA memicu peringatan estimasi penyelesaian yang terlewati
-  selama laporan belum `waiting_confirmation` atau `closed`.
-- ✅ Zona waktu aplikasi menggunakan WIB (`Asia/Jakarta`).
-- ✅ Validasi lampiran komentar tampil segera di browser dan tetap divalidasi
-  di server dengan pesan berbeda untuk jumlah, format, dan ukuran file.
-- ✅ Aksi triase digabung ke detail laporan untuk staff yang di-assign dan
-  manager; halaman triase lama tetap tersedia sebagai kompatibilitas.
-- ✅ Notifikasi memiliki akses cepat `Ke laporan` yang membuka detail laporan
-  terkait sekaligus menandainya sudah dibaca.
-
-### Pesan commit yang disarankan
-
-`feat: complete notifications, uploads, SLA, and inline triage`
-
-### Status terbaru dan tahap selanjutnya
-
-Tahap 3 dan Tahap 4 selesai untuk cakupan MVP. Antrean kerja dan daftar laporan
-menggunakan satu halaman dengan mode operasional berdasarkan role; route lama
-`/queue` tetap tersedia sebagai alias kompatibilitas untuk staff dan manager.
-Tahap 5 selesai untuk cakupan MVP. Tahap berikutnya adalah menyelesaikan email
-setelah notifikasi in-app stabil, kemudian mengevaluasi polling atau WebSocket
-hanya bila kebutuhan operasional memang memerlukannya. Setelah itu dapat
-dilanjutkan ke Tahap 6: migrasi legacy.
-
-### Tahap 5: komunitas
-
-- ✅ Feed laporan publik per gedung dengan pembatasan visibilitas.
-- ✅ “Saya juga mengalami” hanya untuk resident, dengan satu respons per
-  pengguna/laporan, kecuali pelapor laporan tersebut.
-- ✅ Tombol “Tandai duplikat” mengirim flag moderasi tanpa meminta ID laporan
-  utama; manager meninjaunya melalui halaman moderasi dan dapat menolak flag
-  atau mengonfirmasi laporan utama.
-- ✅ Pelaporan konten dan moderasi manager untuk menyembunyikan laporan dari
-  feed tanpa mengubah `visibility`; laporan dapat ditampilkan kembali.
-- ✅ Manager memiliki aksi khusus **“Batalkan status duplikat”** untuk
-  membatalkan konfirmasi duplikat, menghapus relasi laporan utama, dan
-  memulihkan laporan ke feed sebagai laporan mandiri.
-- ✅ Feed hanya menampilkan status aktif (`submitted` sampai
-  `waiting_confirmation` dan `reopened`), bukan `closed` atau laporan duplikat.
-- ✅ Halaman `reports` resident hanya menampilkan laporan miliknya; laporan
-  publik diakses melalui feed komunitas.
-- ✅ Feed komunitas hanya untuk resident. Staff dan manager menggunakan halaman
-  `reports`; manager memiliki halaman moderasi terpisah.
-- ✅ Resident tidak dapat melaporkan, menandai duplikat, atau mengakui laporan
-  miliknya sendiri.
-- ✅ Staff dan manager dapat melaporkan atau menandai duplikat dari halaman
-  `reports`; staff tetap dibatasi pada laporan yang dapat diaksesnya.
-- ✅ Notifikasi pelaporan komunitas untuk manager memiliki akses cepat `Ke
-  Moderasi`.
-
-### Pesan commit yang disarankan
-
-`feat: add community reporting, moderation, and duplicate recovery`
-
-### Tahap 6: migrasi legacy
-
-Buat importer idempotent di salinan database:
-
-- `penghuni` menjadi `users`;
-- `teknisi` dan `manajer` menjadi user berdasarkan role;
-- kategori lama dipetakan ke `categories`;
-- `pengaduan` menjadi `reports`;
-- bukti lama menjadi `attachments`;
-- teks penanganan menjadi komentar historis.
-
-Tambahkan penanda sumber legacy, laporan baris gagal, rekonsiliasi nomor tiket,
-dan validasi akses sebelum aplikasi lama dimatikan.
+Tidak ada Tahap 6 migrasi data lama. Sistem baru dimulai dengan data baru;
+database lama dan data dummy tidak perlu diimpor, dipetakan, atau dipertahankan
+sebagai bagian dari alur aplikasi ini.
 
 ## Catatan operasional
 
 - Jalankan migration sebelum memakai fitur yang memerlukan kolom baru:
   `php artisan migrate`.
 - Jangan menjalankan test terhadap database development atau production.
-- Pertahankan aplikasi lama read-only sampai migrasi data tervalidasi.
 - Jangan menambahkan real-time chat, video besar, aplikasi mobile, AI, atau
-  microservices sebelum alur inti stabil.
+  microservices sebelum alur inti stabil dan kebutuhan operasional terbukti.

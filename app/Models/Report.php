@@ -39,6 +39,8 @@ class Report extends Model
         'retained_until',
         'duplicate_of_report_id',
         'community_hidden_at',
+        'community_chat_disabled_at',
+        'community_chat_disabled_by',
     ];
 
     protected function casts(): array
@@ -54,6 +56,7 @@ class Report extends Model
             'safety_risk_score' => 'integer',
             'assessment_answers' => 'array',
             'community_hidden_at' => 'datetime',
+            'community_chat_disabled_at' => 'datetime',
         ];
     }
 
@@ -115,5 +118,10 @@ class Report extends Model
     public function moderationReports(): HasMany
     {
         return $this->hasMany(ReportModerationReport::class);
+    }
+
+    public function communityChatDisabledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'community_chat_disabled_by');
     }
 }

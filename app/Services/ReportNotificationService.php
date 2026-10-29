@@ -13,6 +13,7 @@ class ReportNotificationService
 
         $recipientIds = collect([$report->reporter_id])
             ->merge($report->assignments->pluck('staff_id'))
+            ->merge($report->acknowledgements()->pluck('user_id'))
             ->merge(User::query()->where('role', 'manager')->where('is_active', true)->pluck('id'))
             ->filter()
             ->unique();

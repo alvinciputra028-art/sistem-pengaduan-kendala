@@ -76,14 +76,87 @@
         @empty
             <p>Tidak ada bukti.</p>
         @endforelse
-        @can('comment', $report)
-            <h2>Komentar</h2>
+        @can('view', $report)
+            <h2>{{ $report->visibility === 'public_building' ? 'Percakapan komunitas' : 'Komentar' }}</h2>
+            @if ($report->visibility === 'public_building')
+                @if ($report->community_chat_disabled_at)
+                <p role="status">Percakapan komunitas dinonaktifkan untuk penghuni lain. Komentar lama tetap dapat dibaca.</p>
+                @elseif ($report->status === 'closed')
+                    <p role="status">Laporan ditutup. Percakapan menjadi hanya-baca.</p>
+                @endif
+                @if (auth()->user()->role === 'manager')
+                    @if ($report->community_chat_disabled_at)
+                        <form method="POST" action="{{ route('reports.community-chat.enable', $report) }}">
+                            @csrf
+                            <button type="submit">Aktifkan percakapan</button>
+                        </form>
+                    @elseif ($report->status !== 'closed')
+                        <form method="POST" action="{{ route('reports.community-chat.disable', $report) }}">
+                            @csrf
+                            <button type="submit">Sembunyikan percakapan dari penghuni lain</button>
+                        </form>
+                    @endif
+                @endif
+            @endif
             @foreach ($report->comments as $comment)
-                <p><strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}</p>
+                @if ($comment->deleted_at)
+                    @if (auth()->user()->role === 'manager')
+                        <p><strong>Komentar disembunyikan:</strong> {{ $comment->body }}</p>
+                        <form method="POST" action="{{ route('comments.restore', $comment->id) }}">
+                            @csrf
+                            <button type="submit">Tampilkan kembali komentar</button>
+                        </form>
+                    @endif
+                @else
+                    <p><strong>{{ $comment->user->name }}</strong>: {{ $comment->body }}</p>
+                @endif
+                @if (auth()->user()->role === 'manager' && $comment->moderationReports->isNotEmpty())
+                    <details>
+                        <summary>{{ $comment->moderationReports->count() }} laporan moderasi untuk komentar ini</summary>
+                        <ul>
+                            @foreach ($comment->moderationReports as $moderation)
+                                <li>
+                                    Alasan: {{ $moderation->reason }} ·
+                                    Pelapor: {{ $moderation->reportedBy->name }} ·
+                                    Status: {{ $moderation->status }} ·
+                                    Dilaporkan: {{ $moderation->created_at->format('d/m/Y H:i') }}
+                                    @if ($moderation->note)
+                                        · Catatan: {{ $moderation->note }}
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </details>
+                @endif
+                @if (!$comment->deleted_at)
                 @foreach ($comment->attachments as $attachment)
                     <p>Lampiran: <a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a></p>
                 @endforeach
+                @can('report', $comment)
+                    <form method="POST" action="{{ route('comments.report', $comment) }}">
+                        @csrf
+                        <label for="comment-reason-{{ $comment->id }}">Alasan pelaporan</label>
+                        <select id="comment-reason-{{ $comment->id }}" name="reason" required>
+                            <option value="">Pilih alasan</option>
+                            <option value="inappropriate">Konten tidak pantas</option>
+                            <option value="personal_data">Data pribadi</option>
+                            <option value="spam">Spam atau promosi</option>
+                            <option value="other">Lainnya</option>
+                        </select>
+                        <input name="note" maxlength="2000" placeholder="Catatan tambahan (opsional)">
+                        <button type="submit">Laporkan komentar</button>
+                    </form>
+                @endcan
+                @can('moderate', $comment)
+                    <form method="POST" action="{{ route('comments.hide', $comment) }}">
+                        @csrf
+                        <button type="submit">Sembunyikan komentar</button>
+                    </form>
+                @endcan
+                @endif
             @endforeach
+        @endcan
+        @can('comment', $report)
             <form method="POST" action="{{ route('reports.comments.store', $report) }}" enctype="multipart/form-data">
                 @csrf
                 <label for="comment-body">Komentar</label>

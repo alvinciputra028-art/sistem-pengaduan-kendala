@@ -232,8 +232,17 @@ class ReportController extends Controller
             'attachments',
             'assignments.serviceUnit',
             'assignments.staff',
-            'comments.user',
-            'comments.attachments',
+            'comments' => function ($query) use ($viewer): void {
+                if ($viewer->role === 'manager') {
+                    $query->withoutGlobalScope('not_deleted');
+                }
+                $query->with([
+                    'user',
+                    'attachments',
+                    'moderationReports.reportedBy',
+                    'moderationReports.reviewedBy',
+                ]);
+            },
             'statusHistories.changedBy',
         ]);
 

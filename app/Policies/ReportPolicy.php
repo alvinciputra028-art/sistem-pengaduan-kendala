@@ -54,8 +54,20 @@ class ReportPolicy
 
     public function comment(User $user, Report $report): bool
     {
+        $isCommunityParticipant = $user->role !== 'resident'
+            || $report->reporter_id === $user->id
+            || ($report->visibility === 'public_building'
+                && $report->acknowledgements()->where('user_id', $user->id)->exists());
+
+        $communityChatDisabledForResident = $user->role === 'resident'
+            && $report->visibility === 'public_building'
+            && $report->community_chat_disabled_at !== null
+            && $report->reporter_id !== $user->id;
+
         return $this->view($user, $report)
-            && $report->status !== 'closed';
+            && $isCommunityParticipant
+            && $report->status !== 'closed'
+            && ! $communityChatDisabledForResident;
     }
 
     public function close(User $user, Report $report): bool

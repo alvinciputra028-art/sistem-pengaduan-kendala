@@ -6,6 +6,7 @@ use App\Models\Building;
 use App\Models\Category;
 use App\Models\Notification;
 use App\Models\ReportModerationReport;
+use App\Models\ReportComment;
 use App\Models\Room;
 use App\Models\Report;
 use App\Models\ReportAssignment;
@@ -619,6 +620,203 @@ class ReportTest extends TestCase
             'user_id' => $manager->id,
             'type' => 'report.comment_added',
         ]);
+    }
+
+    public function test_resident_in_the_same_building_can_join_a_public_report_conversation(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+
+        $this->actingAs($resident)->post(route('community.acknowledge', $report))
+            ->assertRedirect();
+        $this->actingAs($resident)->post(route('reports.comments.store', $report), [
+            'body' => 'Saya juga mengalami kendala yang sama.',
+        ])->assertRedirect(route('reports.show', $report));
+
+        $this->assertDatabaseHas('report_comments', [
+            'report_id' => $report->id,
+            'user_id' => $resident->id,
+            'body' => 'Saya juga mengalami kendala yang sama.',
+        ]);
+    }
+
+    public function test_public_report_conversation_can_be_reported_hidden_and_disabled(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+        $comment = ReportComment::create([
+            'report_id' => $report->id,
+            'user_id' => $report->reporter_id,
+            'body' => 'Komentar yang perlu ditinjau.',
+        ]);
+
+        $this->actingAs($resident)->post(route('comments.report', $comment), [
+            'reason' => 'personal_data',
+            'note' => 'Komentar membocorkan informasi pribadi.',
+        ])->assertRedirect();
+        $this->assertDatabaseHas('report_comment_moderation_reports', [
+            'comment_id' => $comment->id,
+            'reported_by' => $resident->id,
+            'reason' => 'personal_data',
+            'note' => 'Komentar membocorkan informasi pribadi.',
+            'status' => 'open',
+        ]);
+
+        $this->actingAs($manager)->post(route('comments.hide', $comment))
+            ->assertRedirect();
+        $this->assertNotNull($comment->fresh()->deleted_at);
+
+        $this->actingAs($manager)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('Tampilkan kembali komentar');
+        $this->actingAs($manager)->post(route('comments.restore', $comment->id))
+            ->assertRedirect();
+        $this->assertNull($comment->fresh()->deleted_at);
+        $this->assertDatabaseHas('report_comment_moderation_reports', [
+            'comment_id' => $comment->id,
+            'status' => 'resolved',
+            'reviewed_by' => $manager->id,
+        ]);
+
+        $this->actingAs($manager)->post(route('reports.community-chat.disable', $report))
+            ->assertRedirect();
+        $this->assertNotNull($report->fresh()->community_chat_disabled_at);
+
+        $this->actingAs($resident)->post(route('reports.comments.store', $report), [
+            'body' => 'Tidak boleh masuk setelah dinonaktifkan.',
+        ])->assertForbidden();
+    }
+
+    public function test_reported_comment_notifications_only_go_to_managers_with_comment_details(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'assigned');
+        $report->update(['visibility' => 'public_building']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $report->assignments()->create([
+            'service_unit_id' => ServiceUnit::firstOrFail()->id,
+            'staff_id' => $staff->id,
+            'assigned_at' => now(),
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+        $comment = ReportComment::create([
+            'report_id' => $report->id,
+            'user_id' => $report->reporter_id,
+            'body' => 'Komentar yang dilaporkan petugas.',
+        ]);
+
+        $this->actingAs($staff)->post(route('comments.report', $comment), [
+            'reason' => 'spam',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $manager->id,
+            'type' => 'report.comment_reported',
+        ]);
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $staff->id,
+            'type' => 'report.comment_reported',
+        ]);
+        $notification = Notification::where('user_id', $manager->id)
+            ->where('type', 'report.comment_reported')
+            ->firstOrFail();
+        $this->assertSame($comment->id, $notification->data['comment_id']);
+        $this->assertStringContainsString('Komentar #'.$comment->id, $notification->data['message']);
+    }
+
+    public function test_disabling_public_conversation_does_not_block_reporter_or_assigned_staff(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'in_progress');
+        $report->update(['visibility' => 'public_building']);
+        $manager = User::factory()->create(['role' => 'manager']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        $report->assignments()->create([
+            'service_unit_id' => ServiceUnit::firstOrFail()->id,
+            'staff_id' => $staff->id,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($manager)->post(route('reports.community-chat.disable', $report))
+            ->assertRedirect();
+        $this->assertTrue($report->fresh()->community_chat_disabled_at !== null);
+
+        foreach ([$report->reporter, $staff] as $participant) {
+            $this->actingAs($participant)->post(route('reports.comments.store', $report), [
+                'body' => 'Percakapan internal tetap berjalan.',
+            ])->assertRedirect();
+        }
+    }
+
+    public function test_other_resident_cannot_report_comments_after_public_conversation_is_disabled(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'in_progress');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $this->actingAs($resident)->post(route('community.acknowledge', $report))
+            ->assertRedirect();
+        $comment = ReportComment::create([
+            'report_id' => $report->id,
+            'user_id' => $report->reporter_id,
+            'body' => 'Komentar pada percakapan publik.',
+        ]);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('reports.community-chat.disable', $report))
+            ->assertRedirect();
+        $this->actingAs($resident)->post(route('comments.report', $comment), [
+            'reason' => 'spam',
+        ])->assertForbidden();
+        $this->assertDatabaseMissing('report_comment_moderation_reports', [
+            'comment_id' => $comment->id,
+            'reported_by' => $resident->id,
+        ]);
+    }
+
+    public function test_manager_cannot_disable_conversation_after_report_is_closed(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'closed');
+        $report->update(['visibility' => 'public_building']);
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('reports.community-chat.disable', $report))
+            ->assertStatus(422);
+        $this->assertNull($report->fresh()->community_chat_disabled_at);
+    }
+
+    public function test_resident_from_another_building_cannot_join_public_report_conversation(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $otherBuilding = Building::create(['name' => 'Rusunawa Putra']);
+        $report = $this->makeReport($building, $room, $category, 'submitted');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $otherBuilding->id,
+        ]);
+
+        $this->actingAs($resident)->post(route('reports.comments.store', $report), [
+            'body' => 'Komentar dari gedung lain.',
+        ])->assertForbidden();
     }
 
     public function test_user_can_read_only_their_own_notifications(): void

@@ -50,7 +50,19 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('role:resident')
         ->name('reports.store');
     Route::post('/reports/{report}/comments', [ReportCommentController::class, 'store'])
+        ->middleware('throttle:10,1')
         ->name('reports.comments.store');
+    Route::post('/comments/{comment}/report', [ReportCommentController::class, 'report'])
+        ->middleware('throttle:5,1')
+        ->name('comments.report');
+    Route::post('/comments/{comment}/hide', [ReportCommentController::class, 'hide'])
+        ->name('comments.hide');
+    Route::post('/comments/{comment}/restore', [ReportCommentController::class, 'restore'])
+        ->name('comments.restore');
+    Route::post('/reports/{report}/community-chat/disable', [ReportCommentController::class, 'disableConversation'])
+        ->name('reports.community-chat.disable');
+    Route::post('/reports/{report}/community-chat/enable', [ReportCommentController::class, 'enableConversation'])
+        ->name('reports.community-chat.enable');
     Route::post('/reports/{report}/close', [ReportWorkflowController::class, 'close'])
         ->name('reports.close');
     Route::post('/reports/{report}/reopen', [ReportWorkflowController::class, 'reopen'])
