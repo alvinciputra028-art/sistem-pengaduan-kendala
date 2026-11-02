@@ -124,6 +124,14 @@ fieldset label:first-of-type { margin-top: 0; }
 .moderation-actions form { margin-top: 0.85rem; }
 .moderation-actions form + form { display: flex; align-items: flex-end; }
 .moderation-actions form + form button { margin-bottom: 0; }
+.form-section { margin-bottom: 1rem; }
+.form-section__heading { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; }
+.form-section__heading h2 { margin: 0; font-size: 1.15rem; }
+.form-section__heading p { margin: 0.2rem 0 0; color: var(--color-muted); font-size: 0.9rem; }
+.step-number { display: grid; flex: 0 0 1.8rem; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 999px; background: var(--color-primary); color: white; font-weight: 800; }
+.form-context { color: var(--color-muted); }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.form-submit { display: flex; justify-content: flex-end; margin-top: 1rem; }
 .form-helper { margin: 0.35rem 0 1rem; color: var(--color-muted); font-size: 0.9rem; }
 .field-error { margin: 0.35rem 0 0; color: var(--color-danger); font-size: 0.85rem; }
 input[aria-invalid="true"] { border-color: var(--color-danger); }
@@ -153,4 +161,7 @@ input[aria-invalid="true"] { border-color: var(--color-danger); }
     .moderation-actions { align-items: stretch; }
     .moderation-actions form { flex: 1 1 16rem; }
     .moderation-actions form + form { flex: 0 1 auto; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-submit { justify-content: stretch; }
+    .form-submit .button, .form-submit button { width: 100%; }
 }

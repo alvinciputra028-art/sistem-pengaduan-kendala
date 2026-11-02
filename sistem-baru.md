@@ -405,8 +405,8 @@ menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
 ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
 divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 4 selesai. Tahap berikutnya adalah Tahap 5 —
-Form pembuatan laporan.
+**Status saat ini:** Tahap 5 selesai. Tahap berikutnya adalah Tahap 6 —
+Detail laporan dan timeline.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean.
 Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya
@@ -631,7 +631,7 @@ kolom, preview, atau tooltip yang tidak berhak melihatnya.
 berhasil. Tahap berikutnya adalah menyusun form pembuatan laporan yang lebih
 jelas, bertahap, responsif, dan aman terhadap salah input.
 
-### Tahap 5 — Form pembuatan laporan
+### Tahap 5 — Form pembuatan laporan ✅ Selesai
 
 Tujuan: membuat pelaporan kendala cepat, jelas, dan mencegah salah input.
 
@@ -650,6 +650,29 @@ Tujuan: membuat pelaporan kendala cepat, jelas, dan mencegah salah input.
 **Selesai jika:** form dapat digunakan dengan keyboard dan mobile, validasi
 client-side tidak menggantikan validasi server, dan seluruh skenario lokasi,
 visibilitas, serta lampiran tetap lulus.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menata form menjadi lima bagian visual: lokasi dan kategori, uraian kendala,
+  privasi laporan, dampak dan durasi, serta bukti pendukung.
+- Menambahkan helper text untuk lokasi, visibilitas peserta/publik gedung,
+  anonimitas identitas, dampak, dan batas lampiran.
+- Menampilkan ringkasan error di bagian atas serta error per field tanpa
+  mengubah validasi server atau kontrak request.
+- Mempertahankan input lama setelah validasi gagal, termasuk lokasi, kategori,
+  uraian, privasi, jawaban kondisi, durasi, dan lampiran yang dipilih.
+- Menonaktifkan pilihan publik ketika lokasi kamar dipilih dan tetap mengubah
+  visibilitas secara aman di sisi client; policy dan validasi server tetap
+  menjadi sumber kebenaran.
+- Menampilkan nama file lampiran dengan kontrol hapus, validasi client-side
+  untuk maksimal lima gambar, format yang diizinkan, dan ukuran 10 MB per
+  file.
+- Menambahkan layout responsif dan tombol submit yang mudah dijangkau pada
+  mobile serta tetap dapat digunakan dengan keyboard.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite
+berhasil. Tahap berikutnya adalah menyusun halaman detail laporan dan timeline
+agar informasi, histori, dan aksi workflow dapat dipindai dengan jelas.
 
 ### Tahap 6 — Detail laporan dan timeline
 
