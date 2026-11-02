@@ -1,14 +1,15 @@
 # Sistem Pengaduan Kendala
 
 Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
-pengujian, dan backlog proyek Laravel ini. Status terakhir diperbarui pada
-**29 Oktober 2026**.
+rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini.
+Status terakhir diperbarui pada **2 November 2026**.
 
 ## Keputusan arsitektur
 
 - Framework: Laravel dengan modular monolith.
 - Database pengembangan/produksi: MySQL/MariaDB.
-- UI saat ini: Blade; Livewire atau broadcasting dapat ditambahkan kemudian.
+- UI: Blade dengan Tailwind CSS melalui Vite; JavaScript hanya digunakan untuk
+  interaksi yang memang membutuhkan perilaku client-side.
 - Role aplikasi: `resident`, `staff`, dan `manager`.
 - Akses laporan, triase, komentar, dan lampiran menggunakan Policy terpusat.
 - Nomor tiket adalah identitas manusia; ID database tetap menjadi identitas
@@ -396,99 +397,309 @@ Saat laporan ditutup, `retained_until` pada laporan dan lampiran diisi dua
 tahun setelah `closed_at`. Saat laporan dibuka kembali, nilai retensi
 dikosongkan.
 
-## Status implementasi
+## Rencana pengerjaan frontend
 
-| Tahap | Status | Keterangan |
-|---|---|---|
-| 0. Kebijakan akses dan alur | ✅ Selesai untuk aturan inti | Policy terpusat, pembatasan status, close/reopen, prioritas, retensi, dan histori sudah tersedia. |
-| 1. Fondasi Laravel | ✅ Selesai untuk MVP | Login, role, user, gedung, kamar, kategori, unit layanan, dashboard dasar, dan migration tersedia. |
-| 2. Tiket inti | ✅ Selesai untuk cakupan MVP | Pembuatan laporan, lokasi, visibilitas, assignment, lampiran, validasi akses, estimasi, dan histori tersedia. |
-| 3. Triase dan prioritas | 🟢 Selesai untuk MVP | Skor prioritas, triase, assignment, estimasi, antrean kerja, SLA, dan transisi status tersedia. |
-| 4. Percakapan dan notifikasi | 🟢 Selesai untuk MVP | Komentar, lampiran komentar, notifikasi in-app, status dibaca, pembatasan moderasi, dan notifikasi manager-only tersedia; email serta real-time masih opsional. |
-| 5. Fitur komunitas | 🟢 Selesai untuk MVP | Feed publik, “saya juga mengalami”, percakapan terikat laporan, pelaporan komentar, moderasi komentar, serta moderasi laporan/duplikat inline tersedia. |
+Backend MVP sudah tersedia dan test suite terakhir mencatat **55 test lulus,
+235 assertion lulus**. Fokus berikutnya adalah mengubah halaman Blade dasar
+menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
+ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
+divalidasi sebelum masuk ke tahap berikutnya.
 
-### Implementasi yang sudah tersedia
+**Status saat ini:** Tahap 1 selesai. Tahap berikutnya adalah Tahap 2 —
+Halaman login dan navigasi dasar.
 
-- Route web untuk autentikasi, dashboard, laporan, triase, komentar,
-  penutupan/pembukaan kembali, assignment, komunitas, dan akses lampiran.
-- Policy `ReportPolicy`, `ReportCommentPolicy`, dan `AttachmentPolicy`.
-- Validasi upload maksimal lima gambar, MIME gambar, dan 10 MB per file.
-- Validasi kamar terhadap gedung penghuni.
-- Retensi dua tahun untuk laporan dan lampiran.
-- Histori status dan histori perubahan prioritas.
-- Tampilan estimasi respons, estimasi selesai, dan catatan estimasi.
-- Percakapan komunitas publik dengan keanggotaan melalui “Saya juga
-  mengalami”, pelaporan komentar, penyembunyian komentar, serta tombol
-  aktif/nonaktif percakapan oleh manager. Komentar yang disembunyikan dapat
-  dipulihkan kembali oleh manager dengan jejak moderasi tetap tersimpan.
-- Notifikasi pelaporan komentar hanya untuk manager dan mencantumkan
-  identitas serta ringkasan komentar yang dilaporkan.
-- Moderasi komunitas pada halaman daftar laporan/antrean menampilkan pelapor,
-  pengaju flag, alasan, catatan, kandidat laporan utama, dan aksi konfirmasi,
-  penolakan, sembunyikan, pulihkan, atau batalkan duplikat. Halaman lama
-  “Moderasi Komunitas” mengarahkan pengguna ke daftar laporan.
-- Input lampiran laporan dan komentar menampilkan nama file yang dipilih serta
+### Tahap 0 — Audit dan persiapan ✅ Selesai
+
+Tujuan: menetapkan batas perubahan UI tanpa mengubah aturan bisnis yang sudah
+berjalan.
+
+- Inventaris seluruh route dan halaman: login, dashboard, laporan, pembuatan
+  laporan, detail, triase, komunitas, moderasi, dan notifikasi.
+- Petakan komponen berulang: layout, navigasi, breadcrumb, tombol, badge,
+  card, form field, alert, modal konfirmasi, tabel, pagination, empty state,
+  dan error state.
+- Tetapkan kosakata UI berbahasa Indonesia untuk status, prioritas, role,
+  aksi, validasi, dan notifikasi.
+- Tetapkan breakpoint mobile/tablet/desktop, ukuran container, spacing,
+  hirarki heading, fokus keyboard, serta palet warna yang membedakan status
+  tanpa bergantung pada warna saja.
+- Pastikan semua perubahan menggunakan asset yang sudah ada di Vite dan tidak
+  mengubah policy, route, validasi, atau kontrak request.
+
+**Hasil yang sudah diselesaikan:**
+
+- Audit route menemukan 35 route untuk autentikasi, dashboard, laporan,
+  triase, assignment, komentar, komunitas, moderasi, notifikasi, dan lampiran.
+- Audit view menemukan 11 halaman Blade aplikasi: login, dashboard, laporan,
+  detail, pembuatan laporan, triase, komunitas, moderasi, dan notifikasi,
+  termasuk partial triase.
+- Ditetapkan bahwa UI tetap menggunakan Blade, dengan Tailwind CSS melalui
+  Vite dan JavaScript hanya untuk interaksi client-side yang diperlukan.
+- Ditetapkan kebutuhan layout bersama dan komponen reusable: navigasi,
+  breadcrumb, flash/error message, button, badge, card, form field,
+  pagination, empty state, dan dialog konfirmasi.
+- Ditetapkan tiga perspektif UI: resident, staff, dan manager. Kontrol UI
+  tidak boleh menggantikan policy server atau menampilkan data yang tidak
+  berhak dilihat pengguna.
+- Ditetapkan cakupan responsive mobile/tablet/desktop, fokus keyboard,
+  focus-visible, kontras, hirarki heading, serta status yang tidak hanya
+  dibedakan melalui warna.
+- Dikonfirmasi bahwa fondasi asset tersedia di `resources/css/app.css` dan
+  `resources/js/app.js`; build Vite berhasil.
+- Dikonfirmasi bahwa backend tetap stabil: route terdaftar, test suite
+  terakhir **55 test lulus dengan 235 assertion**, dan tidak ada kebutuhan
+  perubahan backend sebagai prasyarat frontend.
+
+**Kriteria selesai:** daftar halaman, komponen, batasan akses, keputusan
+visual, dan urutan pengerjaan sudah ditetapkan. Tidak ada perubahan kode
+aplikasi pada tahap ini karena tahap ini hanya menghasilkan baseline dan
+ruang lingkup implementasi.
+
+### Tahap 1 — Fondasi asset dan layout aplikasi ✅ Selesai
+
+Tujuan: menyediakan kerangka visual yang dipakai semua halaman.
+
+- Pastikan `resources/css/app.css` dan `resources/js/app.js` dimuat melalui
+  satu layout Blade utama.
+- Buat layout authenticated dengan header, navigasi desktop, navigasi mobile,
+  nama pengguna, role, link notifikasi, dan tombol logout.
+- Buat layout guest untuk halaman login dengan branding yang sama.
+- Tambahkan flash message sukses/gagal, ringkasan error validasi, breadcrumb,
+  judul halaman, dan area konten yang konsisten.
+- Buat partial/component kecil untuk button primary/secondary/danger,
+  status badge, priority badge, card, input, select, textarea, file list,
+  pagination, dan empty state.
+- Tambahkan state hover, focus-visible, disabled, loading sederhana, serta
+  kontras teks yang memadai.
+- Hapus markup duplikat antar halaman setelah layout baru terpasang.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Membuat layout authenticated di `resources/views/layouts/app.blade.php`
+  dengan branding, navigasi role-aware, akun pengguna, role badge, dan logout.
+- Membuat layout guest di `resources/views/layouts/guest.blade.php` untuk
+  login dengan asset yang sama.
+- Membuat partial `resources/views/components/feedback.blade.php` untuk flash
+  success/error dan ringkasan error validasi yang konsisten.
+- Memasang layout baru pada seluruh halaman aplikasi: login, dashboard,
+  laporan, detail, pembuatan laporan, triase, komunitas, moderasi, dan
+  notifikasi. Halaman welcome Laravel tetap berdiri sendiri sebagai halaman
+  publik default.
+- Menambahkan fondasi visual di `resources/css/app.css`: token warna,
+  typography, container, card, button, alert, form control, focus-visible,
+  pagination, detail, fieldset, serta breakpoint responsive dasar.
+- Menetapkan style button secara global agar seluruh elemen `<button>` pada
+  form, termasuk login, kirim laporan, komentar, pelaporan, moderasi, filter,
+  dan assignment, tampil sebagai tombol aksi yang konsisten tanpa harus
+  mengubah setiap endpoint atau nama aksi.
+- Menjaga tombol dan link tetap memakai route, policy, validasi, serta kontrak
+  request yang sudah ada; tahap ini hanya mengubah struktur presentasi dan
+  styling.
+- Menghapus navigasi/logout duplikat dari halaman yang sekarang sudah memakai
+  layout bersama.
+
+**Validasi:** `php artisan view:cache` dan `npm run build` berhasil. Layout
+authenticated digunakan oleh semua halaman aplikasi, layout guest digunakan oleh
+halaman login, dan tombol submit/aksi tidak lagi tampil sebagai teks polos.
+Penambahan button styling ini merupakan penyelesaian detail Tahap 1, bukan
+pekerjaan baru Tahap 2.
+
+### Tahap 2 — Halaman login dan navigasi dasar ⏭️ Berikutnya
+
+Tujuan: membuat pintu masuk aplikasi jelas dan nyaman digunakan.
+
+- Poles form login dengan label, helper text, validasi inline, pesan akun
+  tidak aktif, tombol submit yang jelas, dan dukungan keyboard.
+- Tampilkan kredensial development hanya pada environment lokal seperti aturan
+  saat ini; jangan tampilkan pada production.
+- Pastikan redirect setelah login dan logout tetap berjalan.
+- Uji menu pada viewport kecil, termasuk menu yang dapat dibuka dan ditutup
+  tanpa mengganggu isi halaman.
+
+**Selesai jika:** pengguna dapat login, memahami error, bernavigasi ke halaman
+yang sesuai role, dan logout dari desktop maupun mobile.
+
+### Tahap 3 — Dashboard per role
+
+Tujuan: menjadikan dashboard sebagai titik awal kerja, bukan sekadar kumpulan
+link.
+
+- Resident: tampilkan ringkasan laporan milik sendiri, status terakhir,
+  laporan yang menunggu konfirmasi, shortcut buat laporan, dan akses komunitas.
+- Staff: tampilkan antrean assignment aktif, laporan yang perlu ditangani,
+  status pekerjaan, estimasi terdekat, serta shortcut ke antrean.
+- Manager: tampilkan ringkasan seluruh laporan, antrean triase, laporan
+  berprioritas tinggi/kritis, moderasi yang menunggu, dan shortcut assignment.
+- Tambahkan empty state untuk akun baru dan pesan ketika tidak ada pekerjaan.
+- Pastikan angka ringkasan berasal dari data server, bukan angka statis.
+
+**Selesai jika:** setiap role melihat dashboard yang relevan dan setiap kartu
+atau shortcut mengarah ke halaman yang benar dengan policy yang tetap berlaku.
+
+### Tahap 4 — Daftar laporan dan antrean kerja
+
+Tujuan: memudahkan pencarian dan pemindaian laporan.
+
+- Buat tampilan list/table responsif untuk resident, staff, dan manager.
+- Tampilkan ticket number, judul, kategori, lokasi yang aman, status, prioritas,
+  assignment, waktu dibuat, dan estimasi yang sesuai hak akses.
+- Poles filter status, prioritas, pencarian, serta filter antrean staff/manager.
+- Pertahankan query filter ketika berpindah halaman.
+- Gunakan badge dan ikon pendukung, tetapi selalu sertakan teks.
+- Bedakan empty state, hasil pencarian kosong, error server, dan loading.
+- Sediakan aksi moderasi inline hanya bagi manager dan sesuai status laporan.
+
+**Selesai jika:** daftar tetap terbaca pada mobile, filter dapat dipahami,
+pagination tidak kehilangan konteks, dan data privat tidak muncul dalam
+kolom, preview, atau tooltip yang tidak berhak melihatnya.
+
+### Tahap 5 — Form pembuatan laporan
+
+Tujuan: membuat pelaporan kendala cepat, jelas, dan mencegah salah input.
+
+- Susun form bertahap secara visual: lokasi, kategori, uraian, visibilitas,
+  dampak/urgensi/risiko, dan lampiran.
+- Tampilkan pilihan kamar hanya jika relevan dan pertahankan aturan kamar milik
+  gedung pelapor.
+- Jelaskan perbedaan `private` dan `public_building` sebelum submit.
+- Tampilkan batas file: maksimal lima gambar dan 10 MB per file.
+- Tampilkan nama file, ukuran, preview yang aman jika memungkinkan, serta
   tombol hapus/minus sebelum submit.
-- PHPUnit menggunakan SQLite in-memory agar tidak bergantung pada MySQL lokal.
+- Pertahankan input lama ketika validasi server gagal.
+- Tampilkan error per field dan ringkasan error di bagian atas.
+- Tambahkan konfirmasi atau state sukses setelah laporan berhasil dibuat.
 
-## Skenario pengujian inti dan komunitas
+**Selesai jika:** form dapat digunakan dengan keyboard dan mobile, validasi
+client-side tidak menggantikan validasi server, dan seluruh skenario lokasi,
+visibilitas, serta lampiran tetap lulus.
 
-Gunakan data uji: dua gedung, dua penghuni dalam gedung yang sama, satu
-penghuni gedung lain, satu manajer, satu petugas assigned, satu petugas
-non-assigned, satu laporan utama, dan lampiran pada laporan.
+### Tahap 6 — Detail laporan dan timeline
 
-| ID | Skenario | Hasil yang diharapkan |
-|---|---|---|
-| T-01 | Resident membuka laporan miliknya | HTTP 200. |
-| T-02 | Resident satu gedung membuka laporan publik | Berhasil tanpa nomor kamar pelapor. |
-| T-03 | Resident gedung lain membuka laporan privat | HTTP 403. |
-| T-04 | Staff assigned membuka detail dan triase | Berhasil. |
-| T-05 | Staff non-assigned membuka laporan | HTTP 403. |
-| T-06 | Manager membuka dan mentriase laporan | Berhasil. |
-| T-07 | Pengguna berhak mengirim komentar | Komentar tersimpan dengan user yang benar. |
-| T-08 | Komentar pada laporan tertutup | HTTP 403 dan tidak tersimpan. |
-| T-09 | Pengguna berhak mengunduh lampiran | File dikirim sesuai metadata. |
-| T-10 | Pengguna tanpa akses mengunduh lampiran | HTTP 403. |
-| T-11 | Staff mengubah `in_progress` menjadi `waiting_confirmation` | Status dan histori berubah. |
-| T-12 | Resident menutup `waiting_confirmation` | Status `closed`, waktu tutup, dan retensi terisi. |
-| T-13 | Manager menutup `waiting_confirmation` | Berhasil dan pelaku tercatat. |
-| T-14 | Resident atau manager membuka laporan tertutup | Status `reopened`; retensi dikosongkan. |
-| T-15 | Pengguna tanpa hak membuka kembali | HTTP 403. |
-| T-16 | Staff assigned mengubah prioritas dengan alasan | Prioritas dan histori berubah. |
-| T-17 | Perubahan prioritas tanpa alasan | Ditolak; prioritas tetap. |
-| T-18 | Perubahan prioritas pada `waiting_confirmation` atau `closed` | HTTP 403. |
-| T-19 | Detail laporan memiliki data estimasi | Estimasi respons, selesai, dan catatan tampil. |
-| T-20 | Staff mencoba melewati transisi status | Ditolak; status tetap. |
-| T-21 | Lampiran laporan ditutup | Retensi lampiran sama dengan retensi laporan. |
-| T-22 | Login akun aktif dan tidak aktif | Akun aktif berhasil; akun tidak aktif ditolak. |
+Tujuan: menyajikan satu laporan sebagai sumber informasi yang lengkap.
 
-Kriteria penerimaan:
+- Susun header dengan ticket number, judul, status, prioritas, kategori, dan
+  tanggal.
+- Tampilkan informasi lokasi dan identitas hanya sesuai `identity_visibility`
+  serta policy pengguna.
+- Buat panel terpisah untuk deskripsi, lampiran, assignment, estimasi, dan
+  histori status/prioritas.
+- Tampilkan timeline perubahan status dengan pelaku, waktu, dan catatan.
+- Sediakan tombol close, reopen, dan aksi lain hanya ketika status dan role
+  mengizinkan.
+- Tambahkan dialog konfirmasi untuk close, reopen, hide, restore, dan aksi
+  moderasi yang berdampak permanen atau sulit dibatalkan.
+- Tampilkan status read-only pada laporan `closed` dan pesan alasan ketika
+  komentar atau aksi tidak tersedia.
 
-1. Tidak ada endpoint sensitif yang dapat dilewati dengan mengganti ID.
-2. Setiap status dan prioritas memiliki histori pelaku dan waktu.
-3. `closed` hanya dicapai dari `waiting_confirmation`.
-4. Laporan tertutup tidak menerima komentar baru.
-5. Retensi laporan dan lampiran konsisten serta di-reset saat reopen.
-6. Percakapan publik terisolasi antar-gedung, memerlukan acknowledgement,
-   dapat dimoderasi, dan menjadi read-only saat dinonaktifkan atau ditutup.
+**Selesai jika:** detail dapat dipahami tanpa membaca source code, aksi ilegal
+tidak ditawarkan oleh UI, dan seluruh data sensitif tetap tersaring.
 
-Perintah validasi:
+### Tahap 7 — Triase, assignment, dan estimasi
 
-```text
-php artisan test
-```
+Tujuan: mendukung pekerjaan staff dan manager tanpa membuat form operasional
+terlihat seperti form biasa.
 
-Suite terakhir: **55 test lulus, 235 assertion lulus**.
+- Kelompokkan prioritas, skor dampak/urgensi/risiko, unit layanan, staff,
+  estimasi respons, estimasi selesai, dan catatan estimasi.
+- Tampilkan alasan wajib ketika mengubah prioritas atau estimasi.
+- Tampilkan transisi status yang valid sesuai role dan status saat ini.
+- Bedakan aksi manager (triase/assignment) dari aksi staff (menangani laporan).
+- Tampilkan hasil sukses dan error tanpa menghilangkan konteks laporan.
+- Gunakan tabel atau kartu assignment yang jelas bila histori assignment tersedia.
 
-## Backlog berikutnya
+**Selesai jika:** staff tidak melihat kontrol assignment yang tidak boleh dipakai,
+transisi ilegal tidak ditawarkan, dan manager dapat menyelesaikan triase dari
+halaman yang mudah dipindai.
 
-- Menyelesaikan email setelah notifikasi in-app stabil.
-- Mengevaluasi polling atau WebSocket hanya jika kebutuhan operasional memang
-  memerlukannya.
+### Tahap 8 — Komentar, lampiran, komunitas, dan moderasi
 
-Tidak ada Tahap 6 migrasi data lama. Sistem baru dimulai dengan data baru;
-database lama dan data dummy tidak perlu diimpor, dipetakan, atau dipertahankan
-sebagai bagian dari alur aplikasi ini.
+Tujuan: membuat percakapan aman, terbaca, dan mudah dimoderasi.
+
+- Tampilkan thread komentar dengan identitas sesuai aturan visibility dan
+  indikator komentar yang disembunyikan bila manager memiliki hak audit.
+- Bedakan komentar internal, komentar komunitas, dan laporan publik melalui
+  label yang jelas.
+- Tampilkan syarat “Saya juga mengalami” sebelum resident dapat berkomentar.
+- Tampilkan keadaan percakapan aktif, dinonaktifkan, atau read-only karena
+  laporan `closed`.
+- Poles form komentar, rate-limit feedback, daftar lampiran, dan tombol lapor.
+- Buat panel moderasi inline untuk alasan, catatan, kandidat duplikat,
+  konfirmasi, penolakan, sembunyikan, pulihkan, dan batalkan duplikat.
+- Pastikan nomor kamar, kontak, dan detail privat tidak muncul di feed publik,
+  preview, atau komentar.
+
+**Selesai jika:** resident, staff, dan manager memahami batas interaksi mereka,
+moderasi tidak ambigu, dan isolasi antar-gedung tetap terlihat benar dari UI.
+
+### Tahap 9 — Notifikasi dan feedback interaksi
+
+Tujuan: memastikan pengguna mengetahui perubahan tanpa kehilangan konteks.
+
+- Buat indikator jumlah notifikasi belum dibaca di navigasi.
+- Tampilkan daftar notifikasi dengan waktu, tipe, ringkasan, status dibaca,
+  dan link ke laporan terkait.
+- Sediakan aksi tandai sudah dibaca serta state sukses/gagal yang jelas.
+- Pastikan notifikasi manager-only tidak bocor ke resident atau staff.
+- Tambahkan feedback submit: disabled/loading, flash message, error server,
+  dan pencegahan double submit.
+
+**Selesai jika:** setiap aksi penting menghasilkan feedback yang dapat dipahami
+dan pengguna dapat kembali ke objek asal dari notifikasi.
+
+### Tahap 10 — Responsif, aksesibilitas, dan hardening visual
+
+Tujuan: memastikan UI siap dipakai pada perangkat dan kondisi nyata.
+
+- Uji viewport mobile, tablet, laptop, dan desktop.
+- Uji keyboard-only: tab order, focus-visible, form, menu, dialog, dan tombol.
+- Tambahkan label yang benar, `aria-*` seperlunya, alt text, dan struktur
+  heading yang logis.
+- Periksa kontras, ukuran target sentuh, teks panjang, file name panjang,
+  empty state, error state, dan data dalam jumlah besar.
+- Pastikan tidak ada informasi privat pada title, tooltip, source HTML, atau
+  komponen yang disembunyikan secara visual saja.
+- Optimalkan asset build dan hindari JavaScript untuk kebutuhan yang dapat
+  diselesaikan dengan Blade/CSS.
+
+**Selesai jika:** tidak ada layout overflow yang menghalangi aksi utama,
+semua alur utama dapat diselesaikan tanpa mouse, dan hasil build production
+berhasil.
+
+### Tahap 11 — Pengujian end-to-end dan penyelesaian
+
+Tujuan: memvalidasi frontend terhadap backend yang sudah selesai.
+
+- Jalankan `php artisan test` dan pastikan seluruh test backend tetap lulus.
+- Jalankan `npm run build` dan pastikan asset production berhasil dibuat.
+- Uji manual dengan akun resident, staff assigned, staff non-assigned, dan
+  manager.
+- Uji alur utama: login, dashboard, buat laporan, upload, filter, detail,
+  triase, assignment, komentar, notifikasi, close, reopen, dan moderasi.
+- Uji seluruh kombinasi penting role/status untuk memastikan UI tidak
+  menampilkan aksi yang ditolak server.
+- Uji respons error 403, 404, 419, 422, dan 500 dengan tampilan yang layak.
+- Catat bug visual dan fungsional, perbaiki, lalu ulangi validasi sampai bersih.
+- Perbarui screenshot atau dokumentasi penggunaan hanya jika memang
+  diperlukan untuk operasional.
+
+**Kriteria frontend selesai:**
+
+1. Semua halaman aplikasi memakai layout dan komponen visual yang konsisten.
+2. Semua role memperoleh navigasi dan dashboard yang relevan.
+3. Semua form memiliki label, error state, success state, dan state loading
+   yang jelas.
+4. UI tidak menawarkan aksi yang melanggar role, policy, atau transisi status.
+5. Informasi identitas, kamar, lampiran, dan laporan tetap mengikuti aturan
+   privasi.
+6. Tampilan usable pada mobile, desktop, dan keyboard-only.
+7. `php artisan test` dan `npm run build` berhasil.
+
+### Di luar lingkup frontend saat ini
+
+Email, polling/WebSocket, aplikasi mobile, video besar, AI, microservices,
+migrasi data lama, dan redesign backend bukan bagian dari roadmap ini. Fitur
+tersebut hanya dipertimbangkan setelah UI MVP dipakai dan kebutuhan
+operasionalnya terbukti.
 
 ## Catatan operasional
 

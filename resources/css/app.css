@@ -10,3 +10,83 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+:root {
+    --color-ink: #172033;
+    --color-muted: #64748b;
+    --color-border: #dbe3ee;
+    --color-surface: #ffffff;
+    --color-background: #f5f7fb;
+    --color-primary: #2563eb;
+    --color-primary-dark: #1d4ed8;
+    --color-success: #15803d;
+    --color-danger: #b91c1c;
+    --radius: 0.75rem;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--color-ink); background: var(--color-background); font-family: var(--font-sans); line-height: 1.5; }
+a { color: var(--color-primary-dark); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: 1px solid transparent; border-radius: 0.55rem; padding: 0.65rem 0.9rem; background: var(--color-primary); color: white; font-weight: 700; font-size: 0.9rem; }
+button:hover, button:focus-visible { background: var(--color-primary-dark); color: white; }
+.app-shell { min-height: 100vh; }
+.site-header { background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.site-header__inner { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; min-height: 4.5rem; display: flex; align-items: center; gap: 1.5rem; }
+.brand { display: flex; align-items: center; gap: 0.7rem; color: var(--color-ink); min-width: max-content; }
+.brand:hover { text-decoration: none; }
+.brand strong, .brand small { display: block; }
+.brand small { color: var(--color-muted); font-size: 0.75rem; }
+.brand__mark { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 0.65rem; background: var(--color-primary); color: white; font-weight: 800; font-size: 0.8rem; }
+.site-nav { display: flex; align-items: center; gap: 0.25rem; flex: 1; }
+.site-nav a { padding: 0.55rem 0.7rem; border-radius: 0.5rem; color: #475569; font-size: 0.9rem; }
+.site-nav a:hover, .site-nav a:focus-visible { background: #eff6ff; color: var(--color-primary-dark); text-decoration: none; }
+.site-header__account { display: flex; align-items: center; gap: 0.6rem; }
+.account-name { font-size: 0.85rem; font-weight: 600; }
+.role-badge { border-radius: 999px; background: #e0e7ff; color: #3730a3; padding: 0.2rem 0.55rem; font-size: 0.7rem; font-weight: 700; text-transform: capitalize; }
+.page-container { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 4rem; }
+.guest-shell { min-height: 100vh; display: grid; place-items: center; padding: 1rem; background: linear-gradient(135deg, #eff6ff, #f8fafc); }
+.guest-container { width: min(100%, 28rem); }
+.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.page-heading h1 { margin: 0.25rem 0 0; font-size: clamp(1.6rem, 3vw, 2.2rem); letter-spacing: -0.03em; }
+.eyebrow { margin: 0; color: var(--color-muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.25rem; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04); }
+.stack { display: grid; gap: 1rem; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: 1px solid transparent; border-radius: 0.55rem; padding: 0.65rem 0.9rem; background: var(--color-primary); color: white; font-weight: 700; font-size: 0.9rem; }
+.button:hover, .button:focus-visible { background: var(--color-primary-dark); color: white; text-decoration: none; }
+.button--secondary { background: white; border-color: var(--color-border); color: var(--color-ink); }
+.button--secondary:hover, .button--secondary:focus-visible { background: #f8fafc; color: var(--color-ink); }
+.button--danger { background: var(--color-danger); }
+.button--ghost { background: transparent; color: var(--color-muted); }
+.button--ghost:hover, .button--ghost:focus-visible { background: #f1f5f9; color: var(--color-ink); }
+.button--small { padding: 0.4rem 0.65rem; font-size: 0.8rem; }
+button:disabled, .button[aria-disabled="true"] { cursor: not-allowed; opacity: 0.6; }
+.alert { border: 1px solid; border-radius: 0.6rem; padding: 0.8rem 1rem; margin-bottom: 1rem; }
+.alert--success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.alert--error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.alert ul { margin: 0.4rem 0 0; padding-left: 1.25rem; }
+label, legend { display: block; margin-bottom: 0.35rem; font-weight: 700; font-size: 0.875rem; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.65rem 0.75rem; background: white; color: var(--color-ink); }
+textarea { min-height: 7rem; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.3); outline-offset: 2px; }
+form > * + * { margin-top: 0.85rem; }
+article { background: white; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.15rem; margin-bottom: 1rem; }
+article h2 { margin-top: 0; font-size: 1.1rem; }
+main > h1 { margin-top: 0; }
+small { color: var(--color-muted); }
+details { border: 1px solid var(--color-border); border-radius: 0.5rem; padding: 0.7rem; margin-top: 0.75rem; background: #f8fafc; }
+summary { cursor: pointer; font-weight: 700; }
+fieldset { border: 1px solid var(--color-border); border-radius: 0.6rem; padding: 1rem; margin: 1rem 0; }
+fieldset label { margin-top: 0.7rem; }
+fieldset label:first-of-type { margin-top: 0; }
+.pagination { margin-top: 1.5rem; }
+@media (max-width: 800px) {
+    .site-header__inner { flex-wrap: wrap; padding: 0.8rem 0; gap: 0.7rem 1rem; }
+    .site-nav { order: 3; width: 100%; overflow-x: auto; }
+    .site-header__account { margin-left: auto; }
+    .account-name { display: none; }
+    .page-container { padding-top: 1.25rem; }
+    .page-heading { display: block; }
+    .page-heading .button { margin-top: 0.8rem; }
+}

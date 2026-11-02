@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masuk - Sistem Pengaduan</title>
-</head>
-<body>
-    <main>
+@extends('layouts.guest')
+
+@section('title', 'Masuk - Sistem Pengaduan')
+
+@section('content')
+    <section class="card">
+        <p class="eyebrow">Sistem Pengaduan Kendala</p>
         <h1>Masuk</h1>
 
         @if ($errors->any())
@@ -50,6 +48,5 @@
                 <li>Password: <code>password</code></li>
             </ul>
         @endif
-    </main>
-</body>
-</html>
+    </section>
+@endsection

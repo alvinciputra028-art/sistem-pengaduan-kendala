@@ -1,20 +1,17 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ in_array(auth()->user()->role, ['staff', 'manager'], true) ? 'Antrean dan daftar laporan' : 'Daftar laporan' }}</title>
-</head>
-<body>
-    <main>
-        <p><a href="{{ route('dashboard') }}">Dashboard</a></p>
+@extends('layouts.app')
+
+@section('title', in_array(auth()->user()->role, ['staff', 'manager'], true) ? 'Antrean dan daftar laporan' : 'Daftar laporan')
+
+@section('content')
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">{{ in_array(auth()->user()->role, ['staff', 'manager'], true) ? 'Pusat pekerjaan' : 'Riwayat pengaduan' }}</p>
         <h1>{{ in_array(auth()->user()->role, ['staff', 'manager'], true) ? 'Antrean dan daftar laporan' : 'Daftar laporan' }}</h1>
-        @if (session('success'))
-            <p role="status">{{ session('success') }}</p>
-        @endif
+        </div>
         @if (auth()->user()->role === 'resident')
-            <p><a href="{{ route('reports.create') }}">Buat laporan</a></p>
+            <a class="button" href="{{ route('reports.create') }}">Buat laporan</a>
         @endif
+    </div>
         @if (in_array(auth()->user()->role, ['staff', 'manager'], true))
             <form method="GET" action="{{ route('reports.index') }}">
                 <label for="building_id">Gedung</label>
@@ -130,7 +127,5 @@
         @empty
             <p>Belum ada laporan yang dapat ditampilkan.</p>
         @endforelse
-        {{ $reports->links() }}
-    </main>
-</body>
-</html>
+        <div class="pagination">{{ $reports->links() }}</div>
+@endsection

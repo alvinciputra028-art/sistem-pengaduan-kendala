@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notifikasi</title>
-</head>
-<body>
-    <main>
-        <p><a href="{{ route('dashboard') }}">Dashboard</a></p>
+@extends('layouts.app')
+
+@section('title', 'Notifikasi')
+
+@section('content')
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">Pembaruan sistem</p>
         <h1>Notifikasi</h1>
-        @if (session('success'))<p role="status">{{ session('success') }}</p>@endif
+        </div>
+    </div>
         @forelse ($notifications as $notification)
             <article>
                 <p @if (!$notification->read_at)><strong>@endif>
@@ -32,7 +31,5 @@
         @empty
             <p>Belum ada notifikasi.</p>
         @endforelse
-        {{ $notifications->links() }}
-    </main>
-</body>
-</html>
+        <div class="pagination">{{ $notifications->links() }}</div>
+@endsection

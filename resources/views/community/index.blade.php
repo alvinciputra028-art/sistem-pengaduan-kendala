@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Komunitas</title>
-</head>
-<body>
-    <main>
-        <p><a href="{{ route('dashboard') }}">Dashboard</a></p>
+@extends('layouts.app')
+
+@section('title', 'Komunitas')
+
+@section('content')
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">Ruang bersama</p>
         <h1>Komunitas gedung</h1>
-        @if (session('success'))<p role="status">{{ session('success') }}</p>@endif
+        </div>
+    </div>
         @forelse ($reports as $report)
             <article>
                 <h2><a href="{{ route('reports.show', $report) }}">{{ $report->title }}</a></h2>
@@ -49,7 +48,5 @@
         @empty
             <p>Belum ada laporan publik di gedung ini.</p>
         @endforelse
-        {{ $reports->links() }}
-    </main>
-</body>
-</html>
+        <div class="pagination">{{ $reports->links() }}</div>
+@endsection

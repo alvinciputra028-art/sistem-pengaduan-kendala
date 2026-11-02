@@ -1,21 +1,10 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buat Laporan</title>
-</head>
-<body>
-    <main>
-        <p><a href="{{ route('reports.index') }}">Kembali ke laporan</a></p>
+@extends('layouts.app')
+
+@section('title', 'Buat Laporan')
+
+@section('content')
+    <p><a href="{{ route('reports.index') }}">← Kembali ke laporan</a></p>
         <h1>Buat Laporan</h1>
-        @if ($errors->any())
-            <div role="alert" aria-live="assertive">
-                <ul>
-                    @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-                </ul>
-            </div>
-        @endif
         <form id="report-form" method="POST" action="{{ route('reports.store') }}" enctype="multipart/form-data">
             @csrf
             <p>Gedung: <strong>{{ $building->name }}</strong></p>
@@ -100,7 +89,6 @@
             <br>
             <button type="submit">Kirim laporan</button>
         </form>
-    </main>
     <script>
         const locationType = document.getElementById('location_type');
         const roomLocation = document.getElementById('room-location');
@@ -191,5 +179,4 @@
         });
         updateLocationFields();
     </script>
-</body>
-</html>
+@endsection

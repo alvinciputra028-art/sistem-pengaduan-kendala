@@ -1,21 +1,9 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $report->ticket_number }}</title>
-</head>
-<body>
-    <main>
-        <p><a href="{{ route('reports.index') }}">Kembali ke laporan</a></p>
-        @if (session('success'))<p role="status">{{ session('success') }}</p>@endif
-        @if ($errors->any())
-            <div role="alert" aria-live="assertive">
-                <ul>
-                    @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-                </ul>
-            </div>
-        @endif
+@extends('layouts.app')
+
+@section('title', $report->ticket_number)
+
+@section('content')
+        <p><a href="{{ route('reports.index') }}">← Kembali ke laporan</a></p>
         <h1>{{ $report->title }}</h1>
         <p><strong>{{ $report->ticket_number }}</strong></p>
         <p>Status: {{ $report->status }} · Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
@@ -233,5 +221,4 @@
             });
         }
     </script>
-</body>
-</html>
+@endsection
