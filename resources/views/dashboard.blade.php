@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard - Sistem Pengaduan')
+@section('title', 'Dashboard - Sistem Pengaduan Kendala Rusunawa UNTAN')
 
 @section('content')
     <div class="page-heading">

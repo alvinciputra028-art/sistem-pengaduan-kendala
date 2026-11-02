@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Sistem Pengaduan Kendala')</title>
+    <title>@yield('title', 'Sistem Pengaduan Kendala Rusunawa UNTAN')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="app-shell">
@@ -13,11 +13,14 @@
             <a class="brand" href="{{ route('dashboard') }}">
                 <span class="brand__mark" aria-hidden="true">SK</span>
                 <span>
-                    <strong>Sistem Pengaduan</strong>
-                    <small>Kendala hunian</small>
+                    <strong>Sistem Pengaduan Kendala Rusunawa UNTAN</strong>
+                    <small>Pelaporan kendala hunian</small>
                 </span>
             </a>
-            <nav class="site-nav" aria-label="Navigasi utama">
+            <button class="nav-toggle button button--secondary button--small" type="button" aria-expanded="false" aria-controls="primary-navigation">
+                <span class="nav-toggle__label">Buka menu</span>
+            </button>
+            <nav id="primary-navigation" class="site-nav" aria-label="Navigasi utama">
                 <a href="{{ route('dashboard') }}">Dashboard</a>
                 <a href="{{ route('reports.index') }}">{{ in_array(auth()->user()->role, ['staff', 'manager'], true) ? 'Antrean' : 'Laporan' }}</a>
                 @if (auth()->user()->role === 'resident')

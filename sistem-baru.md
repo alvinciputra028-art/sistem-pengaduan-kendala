@@ -1,4 +1,4 @@
-# Sistem Pengaduan Kendala
+# Sistem Pengaduan Kendala Rusunawa UNTAN
 
 Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
 rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini.
@@ -405,8 +405,8 @@ menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
 ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
 divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 1 selesai. Tahap berikutnya adalah Tahap 2 —
-Halaman login dan navigasi dasar.
+**Status saat ini:** Tahap 2 selesai. Tahap berikutnya adalah Tahap 3 —
+Dashboard per role.
 
 ### Tahap 0 — Audit dan persiapan ✅ Selesai
 
@@ -504,7 +504,7 @@ halaman login, dan tombol submit/aksi tidak lagi tampil sebagai teks polos.
 Penambahan button styling ini merupakan penyelesaian detail Tahap 1, bukan
 pekerjaan baru Tahap 2.
 
-### Tahap 2 — Halaman login dan navigasi dasar ⏭️ Berikutnya
+### Tahap 2 — Halaman login dan navigasi dasar ✅ Selesai
 
 Tujuan: membuat pintu masuk aplikasi jelas dan nyaman digunakan.
 
@@ -518,6 +518,26 @@ Tujuan: membuat pintu masuk aplikasi jelas dan nyaman digunakan.
 
 **Selesai jika:** pengguna dapat login, memahami error, bernavigasi ke halaman
 yang sesuai role, dan logout dari desktop maupun mobile.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Memoles form login dengan helper text, autocomplete, label yang terhubung,
+  validasi inline per field, penanda aksesibilitas `aria-invalid`, dan pesan
+  akun tidak aktif dari backend.
+- Menambahkan tombol submit yang jelas, checkbox “Ingat saya” yang
+  mempertahankan input lama, serta dukungan keyboard melalui fokus otomatis
+  dan focus-visible dari fondasi Tahap 1.
+- Menempatkan kredensial development di dalam detail yang dapat dibuka dan
+  memastikan blok tersebut hanya dirender pada environment `local`.
+- Menambahkan tombol menu mobile dengan `aria-expanded` dan `aria-controls`;
+  menu dapat dibuka/tutup tanpa mengubah route atau mengganggu konten halaman.
+- Mempertahankan redirect intended setelah login, logout ke halaman login,
+  serta navigasi berbasis role yang sudah dilindungi server.
+
+**Validasi:** build Vite berhasil dan alur autentikasi tetap menggunakan
+endpoint, validasi, redirect, serta pesan error backend yang sama. Tahap
+berikutnya adalah mengubah dashboard menjadi ringkasan kerja yang relevan
+untuk resident, staff, dan manager.
 
 ### Tahap 3 — Dashboard per role
 

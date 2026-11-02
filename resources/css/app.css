@@ -42,6 +42,7 @@ button:hover, button:focus-visible { background: var(--color-primary-dark); colo
 .site-nav { display: flex; align-items: center; gap: 0.25rem; flex: 1; }
 .site-nav a { padding: 0.55rem 0.7rem; border-radius: 0.5rem; color: #475569; font-size: 0.9rem; }
 .site-nav a:hover, .site-nav a:focus-visible { background: #eff6ff; color: var(--color-primary-dark); text-decoration: none; }
+.nav-toggle { display: none; margin-left: auto; }
 .site-header__account { display: flex; align-items: center; gap: 0.6rem; }
 .account-name { font-size: 0.85rem; font-weight: 600; }
 .role-badge { border-radius: 999px; background: #e0e7ff; color: #3730a3; padding: 0.2rem 0.55rem; font-size: 0.7rem; font-weight: 700; text-transform: capitalize; }
@@ -81,9 +82,18 @@ fieldset { border: 1px solid var(--color-border); border-radius: 0.6rem; padding
 fieldset label { margin-top: 0.7rem; }
 fieldset label:first-of-type { margin-top: 0; }
 .pagination { margin-top: 1.5rem; }
+.form-helper { margin: 0.35rem 0 1rem; color: var(--color-muted); font-size: 0.9rem; }
+.field-error { margin: 0.35rem 0 0; color: var(--color-danger); font-size: 0.85rem; }
+input[aria-invalid="true"] { border-color: var(--color-danger); }
+.checkbox-label { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; }
+.checkbox-label input { width: 1rem; height: 1rem; }
+.development-credentials { margin-top: 1.5rem; }
+.development-credentials ul { margin-bottom: 0; padding-left: 1.25rem; }
 @media (max-width: 800px) {
     .site-header__inner { flex-wrap: wrap; padding: 0.8rem 0; gap: 0.7rem 1rem; }
-    .site-nav { order: 3; width: 100%; overflow-x: auto; }
+    .nav-toggle { display: inline-flex; order: 2; }
+    .site-nav { display: none; order: 3; width: 100%; overflow-x: auto; }
+    .site-nav.site-nav--open { display: grid; }
     .site-header__account { margin-left: auto; }
     .account-name { display: none; }
     .page-container { padding-top: 1.25rem; }
