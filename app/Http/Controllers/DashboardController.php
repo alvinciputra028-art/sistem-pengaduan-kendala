@@ -25,6 +25,7 @@ class DashboardController extends Controller
             $residentReports = app(ReportPolicy::class)->visibleQuery($user);
             $data['reportCounts'] = $this->statusCounts(clone $residentReports);
             $data['recentReports'] = $residentReports
+                ->where('status', '!=', 'closed')
                 ->with(['category', 'building'])
                 ->latest()
                 ->limit(5)
@@ -38,7 +39,7 @@ class DashboardController extends Controller
                 fn (Builder $assignment) => $assignment
                     ->where('staff_id', $user->id)
                     ->whereNull('unassigned_at'),
-            );
+            )->where('status', '!=', 'closed');
             $data['reportCounts'] = $this->statusCounts(clone $assignedReports);
             $data['recentReports'] = $assignedReports
                 ->with(['category', 'building'])

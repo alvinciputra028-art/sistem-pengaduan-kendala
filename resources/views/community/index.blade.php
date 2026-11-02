@@ -27,22 +27,24 @@
                     <p>Anda sudah menandai laporan ini.</p>
                 @endif
                 @if (auth()->user()->role === 'resident' && $report->reporter_id !== auth()->id())
-                    <form method="POST" action="{{ route('community.report', $report) }}">
-                        @csrf
-                        <label for="reason-{{ $report->id }}">Laporkan konten</label>
-                        <select id="reason-{{ $report->id }}" name="reason" required>
-                            <option value="">Pilih alasan</option>
-                            <option value="inappropriate">Konten tidak pantas</option>
-                            <option value="personal_data">Data pribadi</option>
-                            <option value="other">Lainnya</option>
-                        </select>
-                        <input name="note" maxlength="2000" placeholder="Catatan (opsional)">
-                        <button type="submit">Laporkan</button>
-                    </form>
-                    <form method="POST" action="{{ route('community.duplicate', $report) }}">
-                        @csrf
-                        <button type="submit">Tandai duplikat</button>
-                    </form>
+                    <div class="moderation-actions">
+                        <form method="POST" action="{{ route('community.report', $report) }}">
+                            @csrf
+                            <label for="reason-{{ $report->id }}">Laporkan konten</label>
+                            <select id="reason-{{ $report->id }}" name="reason" required>
+                                <option value="">Pilih alasan</option>
+                                <option value="inappropriate">Konten tidak pantas</option>
+                                <option value="personal_data">Data pribadi</option>
+                                <option value="other">Lainnya</option>
+                            </select>
+                            <input name="note" maxlength="2000" placeholder="Catatan (opsional)">
+                            <button type="submit">Laporkan</button>
+                        </form>
+                        <form method="POST" action="{{ route('community.duplicate', $report) }}">
+                            @csrf
+                            <button type="submit">Tandai duplikat</button>
+                        </form>
+                    </div>
                 @endif
             </article>
         @empty

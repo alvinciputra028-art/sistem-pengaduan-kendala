@@ -405,8 +405,8 @@ menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
 ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
 divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 3 selesai. Tahap berikutnya adalah Tahap 4 —
-Daftar laporan dan antrean kerja.
+**Status saat ini:** Tahap 4 selesai. Tahap berikutnya adalah Tahap 5 —
+Form pembuatan laporan.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean.
 Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya
@@ -590,7 +590,7 @@ berhasil dengan **55 test lulus dan 235 assertion lulus**. Tahap berikutnya
 adalah memperkuat daftar laporan dan antrean kerja agar pemindaian, filter,
 pagination, serta tampilan mobile lebih efektif.
 
-### Tahap 4 — Daftar laporan dan antrean kerja
+### Tahap 4 — Daftar laporan dan antrean kerja ✅ Selesai
 
 Tujuan: memudahkan pencarian dan pemindaian laporan.
 
@@ -606,6 +606,30 @@ Tujuan: memudahkan pencarian dan pemindaian laporan.
 **Selesai jika:** daftar tetap terbaca pada mobile, filter dapat dipahami,
 pagination tidak kehilangan konteks, dan data privat tidak muncul dalam
 kolom, preview, atau tooltip yang tidak berhak melihatnya.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menata daftar laporan menjadi kartu responsif dengan ticket number, judul,
+  kategori, gedung, waktu dibuat, status badge, dan priority badge.
+- Menambahkan pencarian berdasarkan ticket number, judul, atau kategori.
+- Menambahkan filter status dan prioritas untuk resident, staff, dan manager;
+  filter gedung, unit layanan, dan usia tetap tersedia untuk antrean staff dan
+  manager.
+- Menambahkan metadata assignment aktif dan estimasi selesai pada antrean
+  sesuai role, tanpa menampilkan detail privat resident pada daftar.
+- Mempertahankan query filter saat pagination serta menyediakan tombol reset
+  dan empty state yang membedakan antrean kosong dari hasil pencarian kosong.
+- Menyediakan aksi moderasi inline manager pada daftar laporan dan menjaga
+  seluruh pembatasan akses tetap berasal dari query/policy backend.
+- Menempatkan aksi “Tandai duplikat” sejajar dengan aksi pelaporan pada
+  tampilan daftar laporan dan komunitas agar lebih ringkas.
+- Mengecualikan laporan `closed` dari daftar laporan terbaru resident dan
+  assignment aktif staff; laporan tertutup tetap dapat ditemukan melalui
+  daftar laporan sesuai filter dan histori.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite
+berhasil. Tahap berikutnya adalah menyusun form pembuatan laporan yang lebih
+jelas, bertahap, responsif, dan aman terhadap salah input.
 
 ### Tahap 5 — Form pembuatan laporan
 

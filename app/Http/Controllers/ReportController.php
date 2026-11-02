@@ -27,6 +27,7 @@ class ReportController extends Controller
 
         if (in_array($user->role, ['manager', 'staff'], true)) {
             $filters = $request->validate([
+                'q' => ['nullable', 'string', 'max:100'],
                 'building_id' => ['nullable', 'integer', 'exists:buildings,id'],
                 'service_unit_id' => ['nullable', 'integer', 'exists:service_units,id'],
                 'status' => ['nullable', Rule::in([
@@ -72,9 +73,28 @@ class ReportController extends Controller
                 ->orderByRaw("CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END")
                 ->oldest('created_at');
         } else {
+            $filters = $request->validate([
+                'q' => ['nullable', 'string', 'max:100'],
+                'status' => [Rule::in([
+                    'submitted', 'triaged', 'assigned', 'in_progress',
+                    'waiting_confirmation', 'reopened', 'closed',
+                ])],
+                'priority' => [Rule::in(['low', 'normal', 'high', 'critical'])],
+            ]);
             $query = app(ReportPolicy::class)->visibleQuery($user)
                 ->with(['category', 'building', 'reporter'])
+                ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
+                ->when($filters['priority'] ?? null, fn (Builder $query, string $priority) => $query->where('priority', $priority))
                 ->latest();
+        }
+
+        if ($filters['q'] ?? null) {
+            $query->where(function (Builder $query) use ($filters): void {
+                $search = $filters['q'];
+                $query->where('ticket_number', 'like', '%'.$search.'%')
+                    ->orWhere('title', 'like', '%'.$search.'%')
+                    ->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', '%'.$search.'%'));
+            });
         }
 
         return view('reports.index', [
