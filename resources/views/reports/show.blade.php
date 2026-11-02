@@ -3,7 +3,7 @@
 @section('title', $report->ticket_number)
 
 @section('content')
-        <p><a href="{{ route('reports.index') }}">← Kembali ke laporan</a></p>
+        <p><a class="button button--secondary button--small" href="{{ route('reports.index') }}">← Kembali ke laporan</a></p>
         <h1>{{ $report->title }}</h1>
         <p><strong>{{ $report->ticket_number }}</strong></p>
         <p>Status: {{ $report->status }} · Prioritas: {{ $report->priority }} ({{ $report->priority_score }})</p>
@@ -25,7 +25,7 @@
         @can('close', $report)
             <form method="POST" action="{{ route('reports.close', $report) }}">
                 @csrf
-                <button type="submit">Konfirmasi selesai dan tutup laporan</button>
+                <button class="button button--success" type="submit">Konfirmasi selesai dan tutup laporan</button>
             </form>
         @endcan
         @can('reopen', $report)
@@ -33,7 +33,7 @@
                 @csrf
                 <label for="reopen-note">Alasan membuka kembali</label>
                 <input id="reopen-note" name="note" required maxlength="2000">
-                <button type="submit">Buka kembali laporan</button>
+                <button class="button button--warning" type="submit">Buka kembali laporan</button>
             </form>
         @endcan
         <p>Kategori: {{ $report->category->name }}</p>
@@ -76,12 +76,12 @@
                     @if ($report->community_chat_disabled_at)
                         <form method="POST" action="{{ route('reports.community-chat.enable', $report) }}">
                             @csrf
-                            <button type="submit">Aktifkan percakapan</button>
+                            <button class="button button--success" type="submit">Aktifkan percakapan</button>
                         </form>
                     @elseif ($report->status !== 'closed')
                         <form method="POST" action="{{ route('reports.community-chat.disable', $report) }}">
                             @csrf
-                            <button type="submit">Sembunyikan percakapan dari penghuni lain</button>
+                            <button class="button button--warning" type="submit">Sembunyikan percakapan dari penghuni lain</button>
                         </form>
                     @endif
                 @endif
@@ -92,7 +92,7 @@
                         <p><strong>Komentar disembunyikan:</strong> {{ $comment->body }}</p>
                         <form method="POST" action="{{ route('comments.restore', $comment->id) }}">
                             @csrf
-                            <button type="submit">Tampilkan kembali komentar</button>
+                            <button class="button button--success" type="submit">Tampilkan kembali komentar</button>
                         </form>
                     @endif
                 @else
@@ -121,7 +121,8 @@
                     <p>Lampiran: <a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a></p>
                 @endforeach
                 @can('report', $comment)
-                    <form method="POST" action="{{ route('comments.report', $comment) }}">
+                    <button class="button button--warning button--small report-toggle" type="button" aria-expanded="false" aria-controls="comment-report-{{ $comment->id }}">Laporkan komentar</button>
+                    <form id="comment-report-{{ $comment->id }}" class="report-reason-form" method="POST" action="{{ route('comments.report', $comment) }}" hidden>
                         @csrf
                         <label for="comment-reason-{{ $comment->id }}">Alasan pelaporan</label>
                         <select id="comment-reason-{{ $comment->id }}" name="reason" required>
@@ -132,13 +133,13 @@
                             <option value="other">Lainnya</option>
                         </select>
                         <input name="note" maxlength="2000" placeholder="Catatan tambahan (opsional)">
-                        <button type="submit">Laporkan komentar</button>
+                        <button class="button button--warning button--small" type="submit">Kirim laporan komentar</button>
                     </form>
                 @endcan
                 @can('moderate', $comment)
                     <form method="POST" action="{{ route('comments.hide', $comment) }}">
                         @csrf
-                        <button type="submit">Sembunyikan komentar</button>
+                        <button class="button button--danger button--small" type="submit">Sembunyikan komentar</button>
                     </form>
                 @endcan
                 @endif
@@ -153,7 +154,7 @@
                 <input id="comment-attachments" type="file" name="attachments[]" accept="image/jpeg,image/png,image/webp" multiple>
                 <p id="comment-attachments-error" role="alert" hidden></p>
                 <ul id="comment-attachment-list"></ul>
-                <button type="submit">Kirim komentar</button>
+                <button class="button" type="submit">Kirim komentar</button>
             </form>
         @endcan
         <h2>Riwayat status</h2>

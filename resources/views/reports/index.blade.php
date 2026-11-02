@@ -121,7 +121,8 @@
                     @endif
                     @if (auth()->user()->role === 'staff' && $report->reporter_id !== auth()->id())
                         <div class="moderation-actions">
-                            <form method="POST" action="{{ route('community.report', $report) }}">
+                            <button class="button button--warning button--small report-toggle" type="button" aria-expanded="false" aria-controls="report-moderation-{{ $report->id }}">Laporkan</button>
+                            <form id="report-moderation-{{ $report->id }}" class="report-reason-form" method="POST" action="{{ route('community.report', $report) }}" hidden>
                                 @csrf
                                 <label for="report-reason-{{ $report->id }}">Laporkan untuk moderasi</label>
                                 <select id="report-reason-{{ $report->id }}" name="reason" required>
@@ -131,11 +132,11 @@
                                     <option value="other">Lainnya</option>
                                 </select>
                                 <input name="note" maxlength="2000" placeholder="Catatan (opsional)">
-                                <button type="submit">Laporkan</button>
+                                <button class="button button--warning button--small" type="submit">Kirim laporan</button>
                             </form>
                             <form method="POST" action="{{ route('community.duplicate', $report) }}">
                                 @csrf
-                                <button type="submit">Tandai duplikat</button>
+                                <button class="button button--secondary button--small" type="submit">Tandai duplikat</button>
                             </form>
                         </div>
                     @endif

@@ -59,9 +59,16 @@ button:hover, button:focus-visible { background: var(--color-primary-dark); colo
 .button--secondary { background: white; border-color: var(--color-border); color: var(--color-ink); }
 .button--secondary:hover, .button--secondary:focus-visible { background: #f8fafc; color: var(--color-ink); }
 .button--danger { background: var(--color-danger); }
+.button--success { background: var(--color-success); }
+.button--warning { background: #b45309; }
+.button--danger:hover, .button--danger:focus-visible { background: #991b1b; }
+.button--success:hover, .button--success:focus-visible { background: #166534; }
+.button--warning:hover, .button--warning:focus-visible { background: #92400e; }
 .button--ghost { background: transparent; color: var(--color-muted); }
 .button--ghost:hover, .button--ghost:focus-visible { background: #f1f5f9; color: var(--color-ink); }
 .button--small { padding: 0.4rem 0.65rem; font-size: 0.8rem; }
+.button--icon { width: 1.75rem; height: 1.75rem; padding: 0; border-radius: 999px; font-size: 1rem; line-height: 1; }
+.attachment-remove { margin-left: 0.35rem; vertical-align: middle; }
 button:disabled, .button[aria-disabled="true"] { cursor: not-allowed; opacity: 0.6; }
 .alert { border: 1px solid; border-radius: 0.6rem; padding: 0.8rem 1rem; margin-bottom: 1rem; }
 .alert--success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
@@ -100,6 +107,13 @@ fieldset label:first-of-type { margin-top: 0; }
 .dashboard-report__meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.4rem; }
 .status-badge, .priority-badge { display: inline-flex; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.72rem; font-weight: 700; }
 .status-badge { background: #e0f2fe; color: #075985; }
+.status-badge--submitted { background: #e0f2fe; color: #075985; }
+.status-badge--triaged { background: #ede9fe; color: #5b21b6; }
+.status-badge--assigned { background: #fef3c7; color: #92400e; }
+.status-badge--in_progress { background: #dbeafe; color: #1e40af; }
+.status-badge--waiting_confirmation { background: #fce7f3; color: #9d174d; }
+.status-badge--reopened { background: #ffedd5; color: #9a3412; }
+.status-badge--closed { background: #e2e8f0; color: #475569; }
 .priority-badge { background: #fef3c7; color: #92400e; }
 .priority-badge--critical { background: #fee2e2; color: #991b1b; }
 .empty-state { text-align: center; margin-bottom: 1rem; }
@@ -124,6 +138,7 @@ fieldset label:first-of-type { margin-top: 0; }
 .moderation-actions form { margin-top: 0.85rem; }
 .moderation-actions form + form { display: flex; align-items: flex-end; }
 .moderation-actions form + form button { margin-bottom: 0; }
+.report-reason-form { flex: 1 1 100%; }
 .form-section { margin-bottom: 1rem; }
 .form-section__heading { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; }
 .form-section__heading h2 { margin: 0; font-size: 1.15rem; }

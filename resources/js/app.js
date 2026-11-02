@@ -11,3 +11,17 @@ if (navigationToggle && primaryNavigation) {
         primaryNavigation.classList.toggle('site-nav--open', !isExpanded);
     });
 }
+
+document.querySelectorAll('.report-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        const form = document.getElementById(toggle.getAttribute('aria-controls'));
+        const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+
+        if (!form) {
+            return;
+        }
+
+        toggle.setAttribute('aria-expanded', String(!isExpanded));
+        form.hidden = isExpanded;
+    });
+});

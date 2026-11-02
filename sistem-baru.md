@@ -667,6 +667,16 @@ visibilitas, serta lampiran tetap lulus.
 - Menampilkan nama file lampiran dengan kontrol hapus, validasi client-side
   untuk maksimal lima gambar, format yang diizinkan, dan ukuran 10 MB per
   file.
+- Menyesuaikan hierarki tombol: tombol kembali memakai secondary, aksi
+  berhasil memakai success, aksi berisiko memakai warning/danger, dan kontrol
+  hapus lampiran memakai tombol icon compact.
+- Menampilkan status laporan pada daftar laporan penghuni dan komunitas sebagai
+  badge berlabel, bukan nilai status database mentah.
+- Menyembunyikan alasan pelaporan dan catatan opsional sampai pengguna memilih
+  tombol “Laporkan”; tombol “Tandai duplikat” tetap sejajar sebagai aksi
+  alternatif.
+- Menambahkan variasi warna untuk aksi utama, sekunder, berhasil, peringatan,
+  dan berbahaya agar tombol tidak memiliki satu warna yang sama.
 - Menambahkan layout responsif dan tombol submit yang mudah dijangkau pada
   mobile serta tetap dapat digunakan dengan keyboard.
 

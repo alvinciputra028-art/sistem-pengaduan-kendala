@@ -213,6 +213,7 @@
                 const remove = document.createElement('button');
                 remove.type = 'button';
                 remove.textContent = '−';
+                remove.className = 'button button--ghost button--icon attachment-remove';
                 remove.setAttribute('aria-label', `Hapus ${file.name}`);
                 remove.addEventListener('click', () => {
                     const dataTransfer = new DataTransfer();
