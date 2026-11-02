@@ -405,8 +405,8 @@ menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
 ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
 divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 2 selesai. Tahap berikutnya adalah Tahap 3 —
-Dashboard per role.
+**Status saat ini:** Tahap 3 selesai. Tahap berikutnya adalah Tahap 4 —
+Daftar laporan dan antrean kerja.
 
 ### Tahap 0 — Audit dan persiapan ✅ Selesai
 
@@ -539,7 +539,7 @@ endpoint, validasi, redirect, serta pesan error backend yang sama. Tahap
 berikutnya adalah mengubah dashboard menjadi ringkasan kerja yang relevan
 untuk resident, staff, dan manager.
 
-### Tahap 3 — Dashboard per role
+### Tahap 3 — Dashboard per role ✅ Selesai
 
 Tujuan: menjadikan dashboard sebagai titik awal kerja, bukan sekadar kumpulan
 link.
@@ -555,6 +555,30 @@ link.
 
 **Selesai jika:** setiap role melihat dashboard yang relevan dan setiap kartu
 atau shortcut mengarah ke halaman yang benar dengan policy yang tetap berlaku.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Mengubah dashboard menjadi ringkasan berbasis data server untuk resident,
+  staff, dan manager.
+- Resident melihat total laporan milik sendiri, status laporan, laporan yang
+  menunggu konfirmasi, laporan terbaru, shortcut buat laporan, dan akses
+  komunitas.
+- Staff melihat total assignment aktif, jumlah pekerjaan yang perlu ditangani,
+  status pekerjaan, daftar assignment terurut berdasarkan prioritas, dan
+  shortcut ke antrean pribadinya.
+- Manager melihat total seluruh laporan, antrean triase, laporan prioritas
+  tinggi/kritis yang belum ditutup, jumlah moderasi terbuka, serta shortcut ke
+  antrean dan moderasi.
+- Menambahkan status badge, prioritas, empty state untuk resident dan staff,
+  daftar laporan responsif, serta tautan langsung ke detail laporan.
+- Query dashboard menggunakan pembatasan akses yang sama dengan policy dan
+  assignment aktif; tidak ada angka ringkasan statis atau perubahan kontrak
+  route dan endpoint.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite
+berhasil dengan **55 test lulus dan 235 assertion lulus**. Tahap berikutnya
+adalah memperkuat daftar laporan dan antrean kerja agar pemindaian, filter,
+pagination, serta tampilan mobile lebih efektif.
 
 ### Tahap 4 — Daftar laporan dan antrean kerja
 
