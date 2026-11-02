@@ -720,6 +720,32 @@ class ReportTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_comments_on_closed_reports_cannot_be_reported(): void
+    {
+        [$building, $room, $category] = $this->referenceData();
+        $report = $this->makeReport($building, $room, $category, 'closed');
+        $report->update(['visibility' => 'public_building']);
+        $resident = User::factory()->create([
+            'role' => 'resident',
+            'building_id' => $building->id,
+            'room_id' => $room->id,
+        ]);
+        $comment = ReportComment::create([
+            'report_id' => $report->id,
+            'user_id' => $report->reporter_id,
+            'body' => 'Komentar pada laporan yang sudah ditutup.',
+        ]);
+
+        $this->actingAs($resident)->post(route('comments.report', $comment), [
+            'reason' => 'spam',
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('report_comment_moderation_reports', [
+            'comment_id' => $comment->id,
+            'reported_by' => $resident->id,
+        ]);
+    }
+
     public function test_reported_comment_notifications_only_go_to_managers_with_comment_details(): void
     {
         [$building, $room, $category] = $this->referenceData();

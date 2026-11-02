@@ -408,6 +408,10 @@ divalidasi sebelum masuk ke tahap berikutnya.
 **Status saat ini:** Tahap 3 selesai. Tahap berikutnya adalah Tahap 4 —
 Daftar laporan dan antrean kerja.
 
+Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean.
+Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya
+mengalihkan ke daftar laporan.
+
 ### Tahap 0 — Audit dan persiapan ✅ Selesai
 
 Tujuan: menetapkan batas perubahan UI tanpa mengubah aturan bisnis yang sudah
@@ -574,6 +578,12 @@ atau shortcut mengarah ke halaman yang benar dengan policy yang tetap berlaku.
 - Query dashboard menggunakan pembatasan akses yang sama dengan policy dan
   assignment aktif; tidak ada angka ringkasan statis atau perubahan kontrak
   route dan endpoint.
+- Menghapus link navigasi dan shortcut dashboard “Moderasi” yang tidak
+  menyediakan halaman berbeda; aksi moderasi tetap tersedia inline pada daftar
+  laporan untuk manager.
+- Menjadikan laporan `closed` read-only untuk pelaporan komentar. Resident dan
+  staff tidak lagi dapat membuat flag moderasi baru pada percakapan yang sudah
+  ditutup, sementara riwayat flag tetap dapat ditinjau manager.
 
 **Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite
 berhasil dengan **55 test lulus dan 235 assertion lulus**. Tahap berikutnya

@@ -33,6 +33,7 @@ class ReportCommentPolicy
         return in_array($user->role, ['resident', 'staff'], true)
             && $comment->user_id !== $user->id
             && $this->view($user, $comment)
+            && $report->status !== 'closed'
             && ! $communityDisabledForOtherResident;
     }
 

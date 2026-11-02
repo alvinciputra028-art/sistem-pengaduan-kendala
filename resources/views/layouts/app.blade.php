@@ -26,9 +26,6 @@
                 @if (auth()->user()->role === 'resident')
                     <a href="{{ route('community.index') }}">Komunitas</a>
                 @endif
-                @if (auth()->user()->role === 'manager')
-                    <a href="{{ route('community.moderation') }}">Moderasi</a>
-                @endif
                 <a href="{{ route('notifications.index') }}">Notifikasi</a>
             </nav>
             <div class="site-header__account">

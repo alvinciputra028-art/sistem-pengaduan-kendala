@@ -110,7 +110,7 @@
             <a class="button button--secondary" href="{{ route('community.index') }}">Buka komunitas</a>
         @elseif ($user->role === 'manager')
             <a class="button" href="{{ route('reports.index') }}">Buka antrean laporan</a>
-            <a class="button button--secondary" href="{{ route('community.moderation') }}">Buka moderasi</a>
+            <a class="button button--secondary" href="{{ route('reports.index') }}">Tinjau moderasi inline</a>
         @else
             <a class="button" href="{{ route('reports.queue') }}">Buka antrean saya</a>
         @endif
