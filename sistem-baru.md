@@ -2,7 +2,7 @@
 
 Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi,
 rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini.
-Status terakhir diperbarui pada **2 November 2026**.
+Status terakhir diperbarui pada **5 November 2026**.
 
 ## Keputusan arsitektur
 
@@ -405,8 +405,8 @@ menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk
 ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan
 divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 5 selesai. Tahap berikutnya adalah Tahap 6 —
-Detail laporan dan timeline.
+**Status saat ini:** Tahap 6 selesai. Tahap berikutnya adalah Tahap 7 —
+Triase, assignment, dan estimasi.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean.
 Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya
@@ -704,6 +704,29 @@ Tujuan: menyajikan satu laporan sebagai sumber informasi yang lengkap.
 
 **Selesai jika:** detail dapat dipahami tanpa membaca source code, aksi ilegal
 tidak ditawarkan oleh UI, dan seluruh data sensitif tetap tersaring.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menata header detail dengan ticket number, judul, tanggal dibuat, badge
+  status, prioritas, kategori, dan lokasi.
+- Memisahkan uraian, bukti pendukung, pihak terkait, estimasi, aksi,
+  percakapan, timeline status, dan riwayat prioritas ke dalam panel yang mudah
+  dipindai.
+- Menampilkan timeline status dengan label bahasa Indonesia, pelaku, waktu,
+  dan catatan perubahan; histori prioritas menampilkan nilai, skor, pelaku,
+  waktu, serta alasan.
+- Mempertahankan penyaringan identitas dan kamar berdasarkan policy serta
+  `identity_visibility`, tanpa menambahkan data sensitif ke tampilan yang
+  tidak berhak.
+- Menampilkan laporan `closed` sebagai read-only, menyediakan pesan saat
+  percakapan tidak tersedia, dan menambahkan konfirmasi untuk close, reopen,
+  hide, restore, serta perubahan percakapan.
+- Mempertahankan seluruh route, policy, validasi, dan kontrak request yang
+  sudah ada.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite
+berhasil. Tahap berikutnya adalah menyusun triase, assignment, dan estimasi
+agar kontrol operasional lebih mudah dipindai sesuai role.
 
 ### Tahap 7 — Triase, assignment, dan estimasi
 

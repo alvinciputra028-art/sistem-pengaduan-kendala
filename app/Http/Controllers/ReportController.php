@@ -279,6 +279,7 @@ class ReportController extends Controller
                 ]);
             },
             'statusHistories.changedBy',
+            'priorityHistories.changedBy',
         ]);
 
         $isReporter = $report->reporter_id === $viewer->id;

@@ -139,6 +139,27 @@ fieldset label:first-of-type { margin-top: 0; }
 .moderation-actions form + form { display: flex; align-items: flex-end; }
 .moderation-actions form + form button { margin-bottom: 0; }
 .report-reason-form { flex: 1 1 100%; }
+.report-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+.report-detail-main, .report-detail-side { display: grid; gap: 1rem; align-content: start; }
+.report-detail-grid h2 { margin-top: 0; font-size: 1.15rem; }
+.report-summary__badges { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+.detail-list { display: grid; gap: 0.8rem; margin: 0; }
+.detail-list div { display: grid; gap: 0.15rem; }
+.detail-list dt { color: var(--color-muted); font-size: 0.78rem; font-weight: 700; }
+.detail-list dd { margin: 0; }
+.report-description { white-space: pre-wrap; margin-bottom: 0; }
+.attachment-item { margin: 0.5rem 0; }
+.timeline, .history-list { margin: 0; padding: 0; list-style: none; }
+.timeline { display: grid; gap: 0; }
+.timeline__item { position: relative; display: grid; grid-template-columns: 1.25rem 1fr; gap: 0.75rem; padding-bottom: 1.1rem; }
+.timeline__item:not(:last-child)::before { content: ''; position: absolute; left: 0.35rem; top: 0.85rem; bottom: 0; border-left: 2px solid var(--color-border); }
+.timeline__marker { z-index: 1; width: 0.75rem; height: 0.75rem; margin-top: 0.25rem; border-radius: 999px; background: var(--color-primary); }
+.timeline__item p { margin: 0.15rem 0 0; color: var(--color-muted); font-size: 0.85rem; }
+.timeline__note { white-space: pre-wrap; color: var(--color-ink) !important; }
+.history-list { display: grid; gap: 0.65rem; padding-left: 1.2rem; list-style: disc; }
+.comment-item { margin: 0.8rem 0; padding: 0.85rem; }
+.comment-item p { margin: 0.25rem 0; }
+.report-actions form { display: block; }
 .form-section { margin-bottom: 1rem; }
 .form-section__heading { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; }
 .form-section__heading h2 { margin: 0; font-size: 1.15rem; }
@@ -177,6 +198,7 @@ input[aria-invalid="true"] { border-color: var(--color-danger); }
     .moderation-actions form { flex: 1 1 16rem; }
     .moderation-actions form + form { flex: 0 1 auto; }
     .form-grid { grid-template-columns: 1fr; }
+    .report-detail-grid { grid-template-columns: 1fr; }
     .form-submit { justify-content: stretch; }
     .form-submit .button, .form-submit button { width: 100%; }
 }
