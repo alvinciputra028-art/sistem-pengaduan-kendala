@@ -506,7 +506,8 @@ Tujuan: menyajikan satu laporan sebagai sumber informasi yang lengkap.
 **Implementasi yang sudah diselesaikan:**
 
 - Menata header detail dengan ticket number, judul, tanggal dibuat, badge status, prioritas, kategori, dan lokasi.
-- Memisahkan uraian, bukti pendukung, pihak terkait, estimasi, aksi, percakapan, timeline status, dan riwayat prioritas ke dalam panel yang mudah dipindai.
+- Memisahkan uraian, bukti pendukung, pihak terkait, aksi, percakapan, serta panel pemantauan estimasi, timeline status, dan riwayat prioritas ke dalam layout dua kolom yang mudah dipindai.
+- Menempatkan pihak terkait dan aksi laporan di kolom utama sebelum komentar, sementara panel pemantauan dipindahkan ke kolom samping agar aksi penting lebih mudah ditemukan.
 - Menampilkan timeline status dengan label bahasa Indonesia, pelaku, waktu, dan catatan perubahan; histori prioritas menampilkan nilai, skor, pelaku, waktu, serta alasan.
 - Mempertahankan penyaringan identitas dan kamar berdasarkan policy serta `identity_visibility`, tanpa menambahkan data sensitif ke tampilan yang tidak berhak.
 - Menampilkan laporan `closed` sebagai read-only, menyediakan pesan saat percakapan tidak tersedia, dan menambahkan konfirmasi untuk close, reopen, hide, restore, serta perubahan percakapan.
@@ -535,6 +536,10 @@ Tujuan: mendukung pekerjaan staff dan manager tanpa membuat form operasional ter
 - Menata assignment manager dalam panel tersendiri dengan unit layanan, petugas yang tersedia, rekomendasi unit, assignment aktif, dan catatan assignment.
 - Menampilkan riwayat assignment sebagai kartu yang membedakan assignment aktif dan selesai tanpa mengubah policy, route, validasi, atau kontrak request.
 - Mempertahankan feedback sukses/error dari layout bersama sehingga konteks nomor tiket dan judul laporan tetap terlihat setelah aksi.
+- Memisahkan halaman kerja triase dan assignment dari detail laporan; staff dan manager membukanya melalui tombol “Buka triase & assignment” dari panel aksi laporan.
+- Menjadikan detail laporan sebagai halaman pemahaman dan aksi umum, sedangkan halaman triase khusus menjadi ruang kerja untuk prioritas, estimasi, assignment, transisi status, dan pemantauan operasional.
+- Menyaring aksi penanganan staff agar hanya menampilkan transisi yang benar-benar diterima endpoint staff (`in_progress` dan `waiting_confirmation`); jalur triase dan assignment manager tidak lagi muncul sebagai form staff.
+- Menempatkan kembali panel pihak terkait di bagian kanan atas detail laporan sebagai informasi pendukung, sementara aksi laporan tetap berada di kolom utama.
 
 **Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite berhasil dengan **56 test lulus dan 237 assertion lulus**. Tahap berikutnya adalah menyusun komentar, lampiran, komunitas, dan moderasi.
 

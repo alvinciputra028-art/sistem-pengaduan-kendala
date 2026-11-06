@@ -61,6 +61,35 @@
             @endforelse
         </section>
 
+        <section class="card report-actions" aria-labelledby="actions-heading">
+            <div class="section-heading">
+                <h2 id="actions-heading">Aksi laporan</h2>
+                @if ($canTriage)
+                    <a class="button button--secondary button--small" href="{{ route('reports.triage.edit', $report) }}">Buka triase &amp; assignment</a>
+                @endif
+            </div>
+            @if ($canTriage)
+                <p class="form-helper">Kelola prioritas, estimasi, assignment, dan penanganan dari halaman kerja operasional.</p>
+            @endif
+            @if ($report->status === 'closed')
+                <p role="status">Laporan ini ditutup dan bersifat read-only. Buka kembali laporan jika masalah belum selesai.</p>
+            @endif
+            @can('close', $report)
+                <form method="POST" action="{{ route('reports.close', $report) }}" data-confirm="Tutup laporan ini? Pastikan pekerjaan sudah selesai.">
+                    @csrf
+                    <button class="button button--success" type="submit">Konfirmasi selesai dan tutup laporan</button>
+                </form>
+            @endcan
+            @can('reopen', $report)
+                <form method="POST" action="{{ route('reports.reopen', $report) }}">
+                    @csrf
+                    <label for="reopen-note">Alasan membuka kembali</label>
+                    <input id="reopen-note" name="note" required maxlength="2000">
+                    <button class="button button--warning" type="submit">Buka kembali laporan</button>
+                </form>
+            @endcan
+        </section>
+
         @can('view', $report)
             <section class="card" aria-labelledby="conversation-heading">
                 <h2 id="conversation-heading">{{ $report->visibility === 'public_building' ? 'Percakapan komunitas' : 'Komentar' }}</h2>
@@ -216,29 +245,6 @@
             @else
                 <p class="empty-state">Belum ada perubahan prioritas.</p>
             @endif
-        </section>
-        @if ($canTriage)
-            <section class="card">@include('reports.partials.triage')</section>
-        @endif
-        <section class="card report-actions" aria-labelledby="actions-heading">
-            <h2 id="actions-heading">Aksi laporan</h2>
-            @if ($report->status === 'closed')
-                <p role="status">Laporan ini ditutup dan bersifat read-only. Buka kembali laporan jika masalah belum selesai.</p>
-            @endif
-            @can('close', $report)
-                <form method="POST" action="{{ route('reports.close', $report) }}" data-confirm="Tutup laporan ini? Pastikan pekerjaan sudah selesai.">
-                    @csrf
-                    <button class="button button--success" type="submit">Konfirmasi selesai dan tutup laporan</button>
-                </form>
-            @endcan
-            @can('reopen', $report)
-                <form method="POST" action="{{ route('reports.reopen', $report) }}">
-                    @csrf
-                    <label for="reopen-note">Alasan membuka kembali</label>
-                    <input id="reopen-note" name="note" required maxlength="2000">
-                    <button class="button button--warning" type="submit">Buka kembali laporan</button>
-                </form>
-            @endcan
         </section>
     </aside>
 </div>

@@ -26,6 +26,8 @@ class ReportTriageController extends Controller
         'closed' => ['reopened'],
     ];
 
+    private const STAFF_TRANSITIONS = ['in_progress', 'waiting_confirmation'];
+
     public function edit(Request $request, Report $report): View
     {
         $this->authorize('triage', $report);
@@ -46,7 +48,10 @@ class ReportTriageController extends Controller
             'serviceUnits' => $serviceUnits,
             'activeAssignment' => $report->assignments->first(fn ($assignment): bool => $assignment->unassigned_at === null),
             'recommendedUnit' => $serviceUnits->first(fn (ServiceUnit $unit): bool => $unit->id === $report->category->default_service_unit_id),
-            'availableTransitions' => self::TRANSITIONS[$report->status] ?? [],
+            'availableTransitions' => array_values(array_intersect(
+                self::TRANSITIONS[$report->status] ?? [],
+                self::STAFF_TRANSITIONS,
+            )),
         ]);
     }
 

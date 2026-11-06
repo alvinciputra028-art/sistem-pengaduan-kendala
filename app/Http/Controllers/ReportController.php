@@ -294,42 +294,12 @@ class ReportController extends Controller
         $activeAssignment = $report->assignments
             ->first(fn ($assignment): bool => $assignment->unassigned_at === null);
         $canTriage = Gate::allows('triage', $report);
-        $serviceUnits = collect();
-        $recommendedUnit = null;
-        $availableTransitions = [];
-        if ($canTriage) {
-            $serviceUnits = ServiceUnit::query()
-                ->where('is_active', true)
-                ->whereHas('buildings', fn (Builder $query) => $query->whereKey($report->building_id))
-                ->with(['staff' => fn ($query) => $query
-                    ->where('users.is_active', true)
-                    ->where('users.role', 'staff')
-                    ->whereHas('buildings', fn (Builder $building) => $building->whereKey($report->building_id))])
-                ->orderBy('name')
-                ->get();
-            $recommendedUnit = $serviceUnits->first(
-                fn (ServiceUnit $unit): bool => $unit->id === $report->category->default_service_unit_id,
-            );
-            $availableTransitions = [
-                'submitted' => ['triaged', 'assigned'],
-                'triaged' => ['assigned', 'in_progress'],
-                'assigned' => ['in_progress'],
-                'in_progress' => ['waiting_confirmation'],
-                'waiting_confirmation' => [],
-                'reopened' => ['triaged', 'assigned', 'in_progress'],
-                'closed' => ['reopened'],
-            ][$report->status] ?? [];
-        }
-
         return view('reports.show', compact(
             'report',
             'canSeeReporterIdentity',
             'canSeeReporterRoom',
             'activeAssignment',
             'canTriage',
-            'serviceUnits',
-            'recommendedUnit',
-            'availableTransitions',
         ));
     }
 

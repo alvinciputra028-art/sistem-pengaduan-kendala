@@ -93,8 +93,8 @@
     @if (auth()->user()->role === 'staff')
         <section class="card triage-actions" aria-labelledby="handling-heading">
             <h2 id="handling-heading">Aksi penanganan staff</h2>
+            <p class="form-helper">Gunakan aksi ini untuk memperbarui tahap pekerjaan Anda. Setiap perubahan memerlukan catatan dan tersimpan di histori laporan.</p>
             @forelse ($availableTransitions as $status)
-            @if (in_array($status, $availableTransitions, true))
                 <form class="triage-action" method="POST" action="{{ route('reports.triage.status', $report) }}">
                     @csrf
                     <input type="hidden" name="status" value="{{ $status }}">
@@ -103,7 +103,6 @@
                     <textarea id="triage-note-{{ $status }}" name="note" required maxlength="2000" placeholder="Jelaskan tindakan atau hasil penanganan"></textarea>
                     <button type="submit">{{ $transitionLabels[$status] ?? 'Perbarui status' }}</button>
                 </form>
-            @endif
             @empty
                 <p role="status">Belum ada transisi status yang dapat dilakukan untuk laporan ini.</p>
             @endforelse
