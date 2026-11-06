@@ -142,6 +142,15 @@ fieldset label:first-of-type { margin-top: 0; }
 .report-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .report-detail-main, .report-detail-side { display: grid; gap: 1rem; align-content: start; }
 .report-detail-grid h2 { margin-top: 0; font-size: 1.15rem; }
+.triage-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.triage-summary h2, .triage-actions h2, .triage-form h2 { margin-top: 0; }
+.triage-form, .triage-actions { margin-bottom: 1rem; }
+.triage-action { padding-top: 1rem; border-top: 1px solid var(--color-border); }
+.triage-action:first-of-type { padding-top: 0; border-top: 0; }
+.assignment-history { display: grid; gap: 0.75rem; }
+.assignment-history__item { margin: 0; padding: 0.85rem; background: #f8fafc; border: 1px solid var(--color-border); border-radius: 0.5rem; }
+.assignment-history__item strong, .assignment-history__item small { display: block; }
+.assignment-history__item p { margin-bottom: 0; white-space: pre-wrap; }
 .report-summary__badges { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
 .detail-list { display: grid; gap: 0.8rem; margin: 0; }
 .detail-list div { display: grid; gap: 0.15rem; }
@@ -199,6 +208,7 @@ input[aria-invalid="true"] { border-color: var(--color-danger); }
     .moderation-actions form + form { flex: 0 1 auto; }
     .form-grid { grid-template-columns: 1fr; }
     .report-detail-grid { grid-template-columns: 1fr; }
+    .triage-summary-grid { grid-template-columns: 1fr; }
     .form-submit { justify-content: stretch; }
     .form-submit .button, .form-submit button { width: 100%; }
 }
