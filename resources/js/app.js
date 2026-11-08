@@ -25,3 +25,16 @@ document.querySelectorAll('.report-toggle').forEach((toggle) => {
         form.hidden = isExpanded;
     });
 });
+
+document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', () => {
+        const submit = form.querySelector('button[type="submit"][data-loading-label]');
+
+        if (!submit) {
+            return;
+        }
+
+        submit.disabled = true;
+        submit.textContent = submit.dataset.loadingLabel;
+    }, { once: true });
+});

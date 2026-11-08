@@ -10,11 +10,18 @@
         </div>
     </div>
         @forelse ($reports as $report)
-            <article>
-                <h2><a href="{{ route('reports.show', $report) }}">{{ $report->title }}</a></h2>
-                <p>{{ $report->building->name }} · {{ $report->ticket_number }}</p>
+            <article class="moderation-card">
+                <div class="report-list-item__header">
+                    <div>
+                        <p class="report-ticket">{{ $report->ticket_number }}</p>
+                        <h2><a href="{{ route('reports.show', $report) }}">{{ $report->title }}</a></h2>
+                    </div>
+                    <span class="status-badge status-badge--{{ $report->status }}">{{ $report->status }}</span>
+                </div>
+                <p class="report-list-item__meta"><span>{{ $report->building->name }}</span><span>Antrian moderasi</span></p>
+                <div class="moderation-actions">
                 @if ($report->community_hidden_at)
-                    <p>Status komunitas: disembunyikan</p>
+                    <p class="alert alert--warning">Status komunitas: disembunyikan</p>
                     @if ($report->duplicate_of_report_id)
                         <form method="POST" action="{{ route('community.cancel-duplicate', $report) }}">
                             @csrf
@@ -32,8 +39,12 @@
                         <button type="submit">Sembunyikan dari komunitas</button>
                     </form>
                 @endif
+                </div>
                 @foreach ($report->moderationReports as $moderation)
-                    <p>Perlu ditinjau: {{ $moderation->reason }}{{ $moderation->note ? ' — '.$moderation->note : '' }}</p>
+                    <details>
+                        <summary>Perlu ditinjau: {{ $moderation->reason }}</summary>
+                        <p>Pengaju: {{ $moderation->reportedBy->name }} · {{ $moderation->created_at->format('d/m/Y H:i') }}</p>
+                        @if ($moderation->note)<p>Catatan: {{ $moderation->note }}</p>@endif
                     @if ($moderation->reason === 'duplicate')
                         <form method="POST" action="{{ route('community.review', $report) }}">
                             @csrf
@@ -53,6 +64,7 @@
                             <button type="submit">Konfirmasi duplikat</button>
                         </form>
                     @endif
+                    </details>
                 @endforeach
             </article>
         @empty

@@ -3,6 +3,9 @@
 @section('title', 'Komunitas')
 
 @section('content')
+    @php
+        $statusLabels = ['submitted' => 'Dikirim', 'triaged' => 'Ditriase', 'assigned' => 'Ditugaskan', 'in_progress' => 'Dikerjakan', 'waiting_confirmation' => 'Menunggu konfirmasi', 'reopened' => 'Dibuka kembali'];
+    @endphp
     <div class="page-heading">
         <div>
             <p class="eyebrow">Ruang bersama</p>
@@ -10,14 +13,16 @@
         </div>
     </div>
         @forelse ($reports as $report)
-            <article>
-                <h2><a href="{{ route('reports.show', $report) }}">{{ $report->title }}</a></h2>
-                @php
-                    $statusLabels = ['submitted' => 'Dikirim', 'triaged' => 'Ditriase', 'assigned' => 'Ditugaskan', 'in_progress' => 'Dikerjakan', 'waiting_confirmation' => 'Menunggu konfirmasi', 'reopened' => 'Dibuka kembali'];
-                @endphp
-                <p>{{ $report->building->name }} · {{ $report->category->name }} · <span class="status-badge status-badge--{{ $report->status }}">{{ $statusLabels[$report->status] ?? $report->status }}</span></p>
-                <p>{{ $report->description }}</p>
-                <p>{{ $report->acknowledgements_count }} penghuni juga mengalami</p>
+            <article class="community-card">
+                <div class="report-list-item__header">
+                    <div>
+                        <p class="report-ticket">{{ $report->ticket_number }}</p>
+                        <h2><a href="{{ route('reports.show', $report) }}">{{ $report->title }}</a></h2>
+                    </div>
+                    <span class="status-badge status-badge--{{ $report->status }}">{{ $statusLabels[$report->status] ?? $report->status }}</span>
+                </div>
+                <p class="report-list-item__meta"><span>{{ $report->building->name }}</span><span>{{ $report->category->name }}</span><span>{{ $report->acknowledgements_count }} penghuni juga mengalami</span></p>
+                <p class="community-description">{{ $report->description }}</p>
                 <p><a href="{{ route('reports.show', $report) }}">Buka percakapan komunitas</a></p>
                 @if (auth()->user()->role === 'resident' && $report->reporter_id !== auth()->id() && !$report->acknowledgements->contains('user_id', auth()->id()))
                     <form method="POST" action="{{ route('community.acknowledge', $report) }}">

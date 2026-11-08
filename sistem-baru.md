@@ -1,6 +1,6 @@
 # Sistem Pengaduan Kendala Rusunawa UNTAN
 
-Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi, rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini. Status terakhir diperbarui pada **6 November 2026**.
+Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi, rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini. Status terakhir diperbarui pada **8 November 2026**.
 
 ## Keputusan arsitektur
 
@@ -333,7 +333,7 @@ Saat laporan ditutup, `retained_until` pada laporan dan lampiran diisi dua tahun
 
 Backend MVP sudah tersedia dan test suite terakhir mencatat **56 test lulus, 237 assertion lulus**. Fokus berikutnya adalah mengubah halaman Blade dasar menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 7 selesai. Tahap berikutnya adalah Tahap 8 — Komentar, lampiran, komunitas, dan moderasi.
+**Status saat ini:** Tahap 8 selesai. Tahap berikutnya adalah Tahap 9 — Notifikasi dan feedback interaksi.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean. Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya mengalihkan ke daftar laporan.
 
@@ -543,7 +543,7 @@ Tujuan: mendukung pekerjaan staff dan manager tanpa membuat form operasional ter
 
 **Validasi:** `php artisan view:cache`, `npm run build`, dan seluruh test suite berhasil dengan **56 test lulus dan 237 assertion lulus**. Tahap berikutnya adalah menyusun komentar, lampiran, komunitas, dan moderasi.
 
-### Tahap 8 — Komentar, lampiran, komunitas, dan moderasi
+### Tahap 8 — Komentar, lampiran, komunitas, dan moderasi ✅ Selesai
 
 Tujuan: membuat percakapan aman, terbaca, dan mudah dimoderasi.
 
@@ -556,6 +556,21 @@ Tujuan: membuat percakapan aman, terbaca, dan mudah dimoderasi.
 - Pastikan nomor kamar, kontak, dan detail privat tidak muncul di feed publik, preview, atau komentar.
 
 **Selesai jika:** resident, staff, dan manager memahami batas interaksi mereka, moderasi tidak ambigu, dan isolasi antar-gedung tetap terlihat benar dari UI.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menata thread komentar pada detail laporan dengan label konteks `Komentar internal`, `Peserta`, atau `Komunitas`, serta badge status percakapan aktif, dibatasi, dan hanya-baca.
+- Menampilkan identitas komentar mengikuti aturan visibility; identitas pelapor anonim tidak ditampilkan kepada pengguna yang tidak berhak.
+- Menampilkan pesan yang menjelaskan bahwa resident harus memilih “Saya juga mengalami” sebelum dapat berkomentar pada laporan publik.
+- Memperjelas keadaan percakapan yang dinonaktifkan atau laporan yang sudah ditutup, termasuk pembatasan aksi manager melalui tombol yang tetap mengikuti policy dan status backend.
+- Menyempurnakan daftar lampiran laporan dan komentar dengan nama file, ukuran, tipe file, tautan akses terproteksi, serta daftar file terpilih yang dapat dihapus sebelum submit.
+- Menambahkan helper text batas rate limit komentar, batas lima gambar, ukuran maksimal 10 MB per file, dan larangan membagikan nomor kamar atau kontak pribadi.
+- Menambahkan feedback loading dan pencegahan double submit pada form yang memerlukan waktu pemrosesan.
+- Merapikan kartu komunitas dan antrean moderasi agar ticket number, status, gedung, kategori, jumlah penghuni terdampak, alasan flag, catatan, dan aksi moderator dapat dipindai.
+- Mempertahankan moderasi laporan secara inline pada daftar laporan/antrean untuk aksi laporkan, tandai duplikat, konfirmasi/tolak duplikat, sembunyikan, pulihkan, dan batalkan status duplikat.
+- Mempertahankan isolasi gedung, sanitasi output Blade, endpoint lampiran non-public, throttle server, policy, route, dan validasi backend sebagai sumber kebenaran.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan `php artisan test` berhasil. Tahap berikutnya adalah menambahkan indikator notifikasi belum dibaca, daftar notifikasi yang dapat ditindaklanjuti, serta feedback interaksi yang konsisten.
 
 ### Tahap 9 — Notifikasi dan feedback interaksi
 

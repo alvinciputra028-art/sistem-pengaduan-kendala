@@ -73,6 +73,8 @@ button:disabled, .button[aria-disabled="true"] { cursor: not-allowed; opacity: 0
 .alert { border: 1px solid; border-radius: 0.6rem; padding: 0.8rem 1rem; margin-bottom: 1rem; }
 .alert--success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
 .alert--error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.alert--warning { border-color: #fed7aa; background: #fff7ed; color: #9a3412; }
+.alert--info { border-color: #bae6fd; background: #f0f9ff; color: #075985; }
 .alert ul { margin: 0.4rem 0 0; padding-left: 1.25rem; }
 label, legend { display: block; margin-bottom: 0.35rem; font-weight: 700; font-size: 0.875rem; }
 input:not([type="checkbox"]):not([type="radio"]), select, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.65rem 0.75rem; background: white; color: var(--color-ink); }
@@ -157,7 +159,9 @@ fieldset label:first-of-type { margin-top: 0; }
 .detail-list dt { color: var(--color-muted); font-size: 0.78rem; font-weight: 700; }
 .detail-list dd { margin: 0; }
 .report-description { white-space: pre-wrap; margin-bottom: 0; }
+.attachment-list { margin: 0.5rem 0; padding-left: 1.25rem; }
 .attachment-item { margin: 0.5rem 0; }
+.attachment-item small { margin-left: 0.35rem; }
 .timeline, .history-list { margin: 0; padding: 0; list-style: none; }
 .timeline { display: grid; gap: 0; }
 .timeline__item { position: relative; display: grid; grid-template-columns: 1.25rem 1fr; gap: 0.75rem; padding-bottom: 1.1rem; }
@@ -168,6 +172,12 @@ fieldset label:first-of-type { margin-top: 0; }
 .history-list { display: grid; gap: 0.65rem; padding-left: 1.2rem; list-style: disc; }
 .comment-item { margin: 0.8rem 0; padding: 0.85rem; }
 .comment-item p { margin: 0.25rem 0; }
+.comment-visibility { display: inline-flex; margin-left: 0.35rem; border-radius: 999px; padding: 0.15rem 0.45rem; background: #f1f5f9; color: var(--color-muted); font-size: 0.7rem; font-weight: 700; }
+.conversation-status { display: inline-flex; flex: 0 0 auto; border-radius: 999px; padding: 0.25rem 0.6rem; font-size: 0.75rem; font-weight: 700; }
+.conversation-status--active { background: #dcfce7; color: #166534; }
+.conversation-status--disabled { background: #ffedd5; color: #9a3412; }
+.conversation-status--closed { background: #e2e8f0; color: #475569; }
+.community-description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .report-actions form { display: block; }
 .form-section { margin-bottom: 1rem; }
 .form-section__heading { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; }

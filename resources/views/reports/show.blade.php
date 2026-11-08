@@ -55,7 +55,12 @@
         <section class="card" aria-labelledby="attachment-heading">
             <h2 id="attachment-heading">Bukti pendukung</h2>
             @forelse ($report->attachments as $attachment)
-                <p class="attachment-item"><a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a> <small>({{ number_format($attachment->size / 1024, 1) }} KB)</small></p>
+                <ul class="attachment-list">
+                    <li class="attachment-item">
+                        <a href="{{ route('attachments.show', $attachment) }}">{{ $attachment->original_name }}</a>
+                        <small>{{ number_format($attachment->size / 1024, 1) }} KB · {{ strtoupper(pathinfo($attachment->original_name, PATHINFO_EXTENSION)) }}</small>
+                    </li>
+                </ul>
             @empty
                 <p class="empty-state">Tidak ada bukti yang dilampirkan.</p>
             @endforelse
@@ -92,11 +97,21 @@
 
         @can('view', $report)
             <section class="card" aria-labelledby="conversation-heading">
-                <h2 id="conversation-heading">{{ $report->visibility === 'public_building' ? 'Percakapan komunitas' : 'Komentar' }}</h2>
+                <div class="section-heading">
+                    <div>
+                        <h2 id="conversation-heading">{{ $report->visibility === 'public_building' ? 'Percakapan komunitas' : 'Komentar internal' }}</h2>
+                        <p class="form-helper">
+                            <span class="visibility-label">{{ $report->visibility === 'public_building' ? 'Publik untuk penghuni gedung' : 'Hanya pihak yang memiliki akses laporan' }}</span>
+                        </p>
+                    </div>
+                    <span class="conversation-status {{ $report->status === 'closed' ? 'conversation-status--closed' : ($report->community_chat_disabled_at ? 'conversation-status--disabled' : 'conversation-status--active') }}">
+                        {{ $report->status === 'closed' ? 'Hanya baca' : ($report->community_chat_disabled_at ? 'Dibatasi' : 'Aktif') }}
+                    </span>
+                </div>
                 @if ($report->visibility === 'public_building' && $report->community_chat_disabled_at)
-                    <p role="status">Percakapan dinonaktifkan untuk penghuni lain. Komentar lama tetap dapat dibaca.</p>
+                    <p class="alert alert--warning" role="status">Percakapan dinonaktifkan untuk penghuni lain. Komentar lama tetap dapat dibaca.</p>
                 @elseif ($report->status === 'closed')
-                    <p role="status">Laporan ditutup. Percakapan menjadi hanya-baca.</p>
+                    <p class="alert alert--info" role="status">Laporan ditutup. Percakapan menjadi hanya-baca.</p>
                 @endif
                 @if (auth()->user()->role === 'manager' && $report->visibility === 'public_building')
                     @if ($report->community_chat_disabled_at)
@@ -122,7 +137,11 @@
                                 </form>
                             @endif
                         @else
-                            <p><strong>{{ $comment->user->name }}</strong> <small>{{ $comment->created_at->format('d/m/Y H:i') }}</small></p>
+                            <p>
+                                <strong>{{ $comment->user_id === $report->reporter_id && !$canSeeReporterIdentity ? 'Penghuni gedung' : $comment->user->name }}</strong>
+                                <small>{{ $comment->created_at->format('d/m/Y H:i') }}</small>
+                                <span class="comment-visibility">{{ $comment->visibility === 'internal' ? 'Internal' : ($report->visibility === 'public_building' ? 'Komunitas' : 'Peserta') }}</span>
+                            </p>
                             <p>{{ $comment->body }}</p>
                             @if (auth()->user()->role === 'manager' && $comment->moderationReports->isNotEmpty())
                                 <details>
@@ -170,14 +189,17 @@
             @can('comment', $report)
                 <form method="POST" action="{{ route('reports.comments.store', $report) }}" enctype="multipart/form-data">
                     @csrf
+                    <p class="form-helper">Komentar dibatasi 10 pengiriman per menit. Gunakan teks biasa dan jangan membagikan nomor kamar atau kontak pribadi.</p>
                     <label for="comment-body">Komentar</label>
                     <textarea id="comment-body" name="body" required maxlength="5000"></textarea>
-                    <label for="comment-attachments">Lampiran</label>
+                    <label for="comment-attachments">Lampiran komentar <small>(maksimal 5 gambar, 10 MB per file)</small></label>
                     <input id="comment-attachments" type="file" name="attachments[]" accept="image/jpeg,image/png,image/webp" multiple>
                     <p id="comment-attachments-error" role="alert" hidden></p>
                     <ul id="comment-attachment-list"></ul>
-                    <button class="button" type="submit">Kirim komentar</button>
+                    <button class="button" type="submit" data-loading-label="Mengirim komentar...">Kirim komentar</button>
                 </form>
+            @elseif ($report->visibility === 'public_building' && auth()->user()->role === 'resident' && $report->reporter_id !== auth()->id() && $report->status !== 'closed' && !$report->community_chat_disabled_at)
+                <p class="alert alert--info" role="status">Pilih <strong>“Saya juga mengalami”</strong> pada halaman komunitas sebelum dapat ikut berkomentar.</p>
             @elseif ($report->status === 'closed')
                 <p role="status">Komentar tidak tersedia karena laporan sudah ditutup.</p>
             @endcan
