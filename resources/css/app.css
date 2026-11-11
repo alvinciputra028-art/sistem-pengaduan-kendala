@@ -186,6 +186,8 @@ fieldset label:first-of-type { margin-top: 0; }
 .conversation-status--active { background: #dcfce7; color: #166534; }
 .conversation-status--disabled { background: #ffedd5; color: #9a3412; }
 .conversation-status--closed { background: #e2e8f0; color: #475569; }
+.conversation-action { margin: 0; }
+.conversation-action button { margin-top: 0; }
 .community-description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .report-actions form { display: block; }
 .form-section { margin-bottom: 1rem; }

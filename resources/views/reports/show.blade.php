@@ -115,12 +115,12 @@
                 @endif
                 @if (auth()->user()->role === 'manager' && $report->visibility === 'public_building')
                     @if ($report->community_chat_disabled_at)
-                        <form method="POST" action="{{ route('reports.community-chat.enable', $report) }}" data-confirm="Aktifkan kembali percakapan komunitas?">
+                        <form class="conversation-action" method="POST" action="{{ route('reports.community-chat.enable', $report) }}" data-confirm="Aktifkan kembali percakapan komunitas?">
                             @csrf
                             <button class="button button--success" type="submit">Aktifkan percakapan</button>
                         </form>
                     @elseif ($report->status !== 'closed')
-                        <form method="POST" action="{{ route('reports.community-chat.disable', $report) }}" data-confirm="Sembunyikan percakapan dari penghuni lain?">
+                        <form class="conversation-action" method="POST" action="{{ route('reports.community-chat.disable', $report) }}" data-confirm="Sembunyikan percakapan dari penghuni lain?">
                             @csrf
                             <button class="button button--warning" type="submit">Sembunyikan percakapan</button>
                         </form>
