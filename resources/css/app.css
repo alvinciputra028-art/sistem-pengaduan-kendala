@@ -145,11 +145,11 @@ fieldset label:first-of-type { margin-top: 0; }
 .report-assignment, .report-estimate { margin: 0.75rem 0 0; font-size: 0.9rem; }
 .report-estimate { color: var(--color-muted); }
 .report-list-item__link { display: inline-block; margin-top: 0.75rem; font-weight: 700; }
-.moderation-actions { display: flex; align-items: flex-end; gap: 0.6rem; flex-wrap: wrap; }
-.moderation-actions form { margin-top: 0.85rem; }
-.moderation-actions form + form { display: flex; align-items: flex-end; }
-.moderation-actions form + form button { margin-bottom: 0; }
-.report-reason-form { flex: 1 1 100%; }
+.moderation-actions { display: grid; gap: 0.85rem; }
+.moderation-action-buttons { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.moderation-action-buttons form { margin: 0; }
+.moderation-action-buttons form button { margin-top: 0; }
+.report-reason-form { width: 100%; }
 .report-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .report-detail-main, .report-detail-side { display: grid; gap: 1rem; align-content: start; }
 .report-detail-grid h2 { margin-top: 0; font-size: 1.15rem; }

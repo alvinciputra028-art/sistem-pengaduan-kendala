@@ -36,7 +36,13 @@
                 @endif
                 @if (auth()->user()->role === 'resident' && $report->reporter_id !== auth()->id())
                     <div class="moderation-actions">
-                        <button class="button button--warning button--small report-toggle" type="button" aria-expanded="false" aria-controls="community-report-{{ $report->id }}">Laporkan</button>
+                        <div class="moderation-action-buttons">
+                            <button class="button button--warning button--small report-toggle" type="button" aria-expanded="false" aria-controls="community-report-{{ $report->id }}">Laporkan</button>
+                            <form method="POST" action="{{ route('community.duplicate', $report) }}">
+                                @csrf
+                                <button class="button button--secondary button--small" type="submit">Tandai duplikat</button>
+                            </form>
+                        </div>
                         <form id="community-report-{{ $report->id }}" class="report-reason-form" method="POST" action="{{ route('community.report', $report) }}" hidden>
                             @csrf
                             <label for="reason-{{ $report->id }}">Laporkan konten</label>
@@ -48,10 +54,6 @@
                             </select>
                             <input name="note" maxlength="2000" placeholder="Catatan (opsional)">
                             <button class="button button--warning button--small" type="submit">Kirim laporan</button>
-                        </form>
-                        <form method="POST" action="{{ route('community.duplicate', $report) }}">
-                            @csrf
-                            <button class="button button--secondary button--small" type="submit">Tandai duplikat</button>
                         </form>
                     </div>
                 @endif
