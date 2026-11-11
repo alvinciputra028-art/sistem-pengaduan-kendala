@@ -333,7 +333,7 @@ Saat laporan ditutup, `retained_until` pada laporan dan lampiran diisi dua tahun
 
 Backend MVP sudah tersedia dan test suite terakhir mencatat **56 test lulus, 237 assertion lulus**. Fokus berikutnya adalah mengubah halaman Blade dasar menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 8 selesai. Tahap berikutnya adalah Tahap 9 — Notifikasi dan feedback interaksi.
+**Status saat ini:** Tahap 9 selesai. Tahap berikutnya adalah Tahap 10 — Responsif, aksesibilitas, dan hardening visual.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean. Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya mengalihkan ke daftar laporan.
 
@@ -572,7 +572,7 @@ Tujuan: membuat percakapan aman, terbaca, dan mudah dimoderasi.
 
 **Validasi:** `php artisan view:cache`, `npm run build`, dan `php artisan test` berhasil. Tahap berikutnya adalah menambahkan indikator notifikasi belum dibaca, daftar notifikasi yang dapat ditindaklanjuti, serta feedback interaksi yang konsisten.
 
-### Tahap 9 — Notifikasi dan feedback interaksi
+### Tahap 9 — Notifikasi dan feedback interaksi ✅ Selesai
 
 Tujuan: memastikan pengguna mengetahui perubahan tanpa kehilangan konteks.
 
@@ -583,6 +583,18 @@ Tujuan: memastikan pengguna mengetahui perubahan tanpa kehilangan konteks.
 - Tambahkan feedback submit: disabled/loading, flash message, error server, dan pencegahan double submit.
 
 **Selesai jika:** setiap aksi penting menghasilkan feedback yang dapat dipahami dan pengguna dapat kembali ke objek asal dari notifikasi.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menambahkan indikator jumlah notifikasi belum dibaca pada navigasi authenticated, termasuk label aksesibel dan batas tampilan `99+`.
+- Menata daftar notifikasi menjadi kartu yang menampilkan tipe, ringkasan, waktu relatif, nomor tiket, status dibaca, dan empty state.
+- Menyediakan tautan “Buka laporan” yang mempertahankan otorisasi backend serta otomatis menandai notifikasi terkait sebagai sudah dibaca.
+- Menyediakan aksi “Tandai sudah dibaca” untuk setiap notifikasi belum dibaca, termasuk notifikasi yang memiliki tautan laporan.
+- Memusatkan query jumlah notifikasi belum dibaca pada view composer layout agar konsisten di seluruh halaman dan tetap terisolasi berdasarkan user yang sedang login.
+- Memperluas pencegahan double submit ke seluruh form yang memiliki tombol submit, dengan state disabled dan `aria-busy`; label loading khusus tetap dipakai jika tersedia.
+- Mempertahankan flash success/error, validasi server, throttle, policy, dan pembatasan notifikasi manager-only sebagai sumber kebenaran.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan `php artisan test` berhasil. Tahap berikutnya adalah menguji responsif, aksesibilitas, dan hardening visual pada seluruh alur utama.
 
 ### Tahap 10 — Responsif, aksesibilitas, dan hardening visual
 

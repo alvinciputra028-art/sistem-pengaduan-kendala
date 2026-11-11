@@ -26,7 +26,12 @@
                 @if (auth()->user()->role === 'resident')
                     <a href="{{ route('community.index') }}">Komunitas</a>
                 @endif
-                <a href="{{ route('notifications.index') }}">Notifikasi</a>
+                <a href="{{ route('notifications.index') }}" @if ($unreadNotificationCount > 0) aria-label="Notifikasi, {{ $unreadNotificationCount }} belum dibaca" @endif>
+                    Notifikasi
+                    @if ($unreadNotificationCount > 0)
+                        <span class="notification-count" aria-hidden="true">{{ $unreadNotificationCount > 99 ? '99+' : $unreadNotificationCount }}</span>
+                    @endif
+                </a>
             </nav>
             <div class="site-header__account">
                 <span class="account-name">{{ auth()->user()->name }}</span>

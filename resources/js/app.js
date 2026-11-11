@@ -28,13 +28,16 @@ document.querySelectorAll('.report-toggle').forEach((toggle) => {
 
 document.querySelectorAll('form').forEach((form) => {
     form.addEventListener('submit', () => {
-        const submit = form.querySelector('button[type="submit"][data-loading-label]');
+        const submit = form.querySelector('button[type="submit"]');
 
         if (!submit) {
             return;
         }
 
         submit.disabled = true;
-        submit.textContent = submit.dataset.loadingLabel;
+        submit.setAttribute('aria-busy', 'true');
+        if (submit.dataset.loadingLabel) {
+            submit.textContent = submit.dataset.loadingLabel;
+        }
     }, { once: true });
 });
