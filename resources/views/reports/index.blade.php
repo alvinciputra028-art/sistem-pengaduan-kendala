@@ -93,6 +93,7 @@
             @endif
         </section>
     @endif
+        <div class="report-card-grid">
         @forelse ($reports as $report)
             <article class="report-list-item">
                 <div class="report-list-item__header">
@@ -189,5 +190,6 @@
         @empty
             <p>Belum ada laporan yang dapat ditampilkan.</p>
         @endforelse
+        </div>
         <div class="pagination">{{ $reports->links() }}</div>
 @endsection

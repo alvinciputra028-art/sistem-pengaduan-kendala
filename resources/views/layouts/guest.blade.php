@@ -7,7 +7,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="guest-shell">
-    <main class="guest-container">
+    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+    <main id="main-content" class="guest-container" tabindex="-1">
         @yield('content')
     </main>
 </body>

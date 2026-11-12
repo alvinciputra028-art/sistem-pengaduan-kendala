@@ -1,6 +1,6 @@
 # Sistem Pengaduan Kendala Rusunawa UNTAN
 
-Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi, rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini. Status terakhir diperbarui pada **8 November 2026**.
+Dokumen ini mencatat keputusan arsitektur, aturan bisnis, status implementasi, rencana pengerjaan frontend, dan kriteria penerimaan proyek Laravel ini. Status terakhir diperbarui pada **12 November 2026**.
 
 ## Keputusan arsitektur
 
@@ -333,7 +333,7 @@ Saat laporan ditutup, `retained_until` pada laporan dan lampiran diisi dua tahun
 
 Backend MVP sudah tersedia dan test suite terakhir mencatat **56 test lulus, 237 assertion lulus**. Fokus berikutnya adalah mengubah halaman Blade dasar menjadi antarmuka yang konsisten, mudah dipahami, responsif, dan aman untuk ketiga role. Tahap dikerjakan berurutan; setiap tahap harus selesai dan divalidasi sebelum masuk ke tahap berikutnya.
 
-**Status saat ini:** Tahap 9 selesai. Tahap berikutnya adalah Tahap 10 — Responsif, aksesibilitas, dan hardening visual.
+**Status saat ini:** Tahap 10 selesai. Tahap berikutnya adalah Tahap 11 — Pengujian end-to-end dan penyelesaian.
 
 Catatan UX: moderasi komunitas dilakukan inline pada daftar laporan/antrean. Navigasi terpisah “Moderasi” dihapus karena route sebelumnya hanya mengalihkan ke daftar laporan.
 
@@ -608,6 +608,30 @@ Tujuan: memastikan UI siap dipakai pada perangkat dan kondisi nyata.
 - Optimalkan asset build dan hindari JavaScript untuk kebutuhan yang dapat diselesaikan dengan Blade/CSS.
 
 **Selesai jika:** tidak ada layout overflow yang menghalangi aksi utama, semua alur utama dapat diselesaikan tanpa mouse, dan hasil build production berhasil.
+
+**Implementasi yang sudah diselesaikan:**
+
+- Menambahkan skip link pada layout authenticated dan guest, landmark `main` yang dapat menerima fokus, serta mempertahankan label, heading, dan state aksesibel pada form serta navigasi.
+- Menambahkan dukungan keyboard untuk menu mobile: fokus berpindah ke tautan pertama saat menu dibuka, tombol `Escape` menutup menu, dan fokus kembali ke tombol pemicu.
+- Menambahkan target sentuh minimum pada kontrol interaktif, focus-visible yang konsisten, serta pengecualian ukuran untuk tombol icon compact.
+- Mencegah overflow horizontal pada viewport kecil dan membungkus teks panjang pada nama file, pesan notifikasi, assignment, estimasi, serta ringkasan komunitas.
+- Menata ulang action group dan heading pada layar sempit agar tombol tetap mudah dijangkau, serta menambahkan wrapper overflow untuk tabel bila digunakan.
+- Menambahkan dukungan `prefers-reduced-motion` dan memindahkan fokus ke field pertama ketika form inline dibuka.
+- Mengubah navigasi desktop menjadi sidebar kiri penuh, tablet menjadi rail yang dapat dibuka kembali, dan mobile menjadi drawer overlay dengan hamburger, tombol tutup, identitas akun, role, serta logout.
+- Menghapus tombol teks “Buka menu”/“Tutup menu” dan menggantinya dengan kontrol ikon yang memiliki accessible name serta dukungan `Escape` dan backdrop.
+- Menjaga aksi “Laporkan” dan “Tandai duplikat” tetap sejajar pada mobile tanpa memaksa tombol pertama memenuhi seluruh lebar kartu.
+- Menyesuaikan lebar konten, grid dashboard, filter, detail, dan ringkasan triase pada tablet agar tidak terpotong atau melebar keluar viewport.
+- Menggunakan grid dua kolom untuk kartu laporan pada desktop dan mempertahankan satu kolom pada tablet/mobile agar konten memanfaatkan ruang tanpa menjadi terlalu panjang.
+- Merapatkan drawer mobile dengan jarak antarbagian yang proporsional, menghapus lingkaran dekoratif pada tombol hamburger/X, serta menempatkan kontrol tablet di pojok kanan atas.
+- Menetapkan drawer mobile memakai lebar penuh dengan susunan padat: identitas di bagian atas, navigasi berjarak konsisten, dan akun/logout sejajar di bagian bawah.
+- Menyembunyikan kontrol hamburger pada desktop penuh; kontrol tersebut hanya tersedia untuk rail tablet dan drawer mobile.
+- Menambahkan tooltip hover/focus pada ikon navigasi rail tablet tanpa menduplikasi label pada desktop atau drawer mobile.
+- Mengunci drawer mobile agar brand tidak mengambil ruang fleksibel yang mendorong menu terlalu jauh ke bawah; navigasi kini mengikuti jarak tetap dan blok akun menempatkan nama/role bertumpuk dengan logout di kolom samping.
+- Menonaktifkan tooltip secara eksplisit pada rail tablet ketika sidebar sedang terbuka sehingga label menu yang sudah tampil tidak tertutup tooltip.
+- Melebarkan sidebar tablet saat terbuka dan mengunci area akun menjadi dua kolom agar nama/role tetap di kiri serta tombol logout tetap berada di sisi kanan.
+- Mempertahankan prinsip progressive enhancement: Blade dan CSS menangani struktur utama, sedangkan JavaScript hanya menangani menu, toggle form, dan feedback submit.
+
+**Validasi:** `php artisan view:cache`, `npm run build`, dan `php artisan test` berhasil. Tahap berikutnya adalah pengujian end-to-end dan penyelesaian pada Tahap 11.
 
 ### Tahap 11 — Pengujian end-to-end dan penyelesaian
 

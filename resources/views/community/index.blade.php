@@ -12,6 +12,7 @@
         <h1>Komunitas gedung</h1>
         </div>
     </div>
+        <div class="report-card-grid">
         @forelse ($reports as $report)
             <article class="community-card">
                 <div class="report-list-item__header">
@@ -61,5 +62,6 @@
         @empty
             <p>Belum ada laporan publik di gedung ini.</p>
         @endforelse
+        </div>
         <div class="pagination">{{ $reports->links() }}</div>
 @endsection

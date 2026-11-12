@@ -2,14 +2,44 @@ import './bootstrap';
 
 const navigationToggle = document.querySelector('.nav-toggle');
 const primaryNavigation = document.querySelector('#primary-navigation');
+const siteHeader = document.querySelector('.site-header');
+const navigationBackdrop = document.querySelector('.nav-backdrop');
 
-if (navigationToggle && primaryNavigation) {
+if (navigationToggle && primaryNavigation && siteHeader) {
+    const setNavigationState = (isOpen, moveFocus = false) => {
+        navigationToggle.setAttribute('aria-expanded', String(isOpen));
+        navigationToggle.setAttribute('aria-label', isOpen ? 'Tutup navigasi' : 'Buka navigasi');
+        navigationToggle.querySelector('.sr-only').textContent = isOpen ? 'Tutup navigasi' : 'Buka navigasi';
+        siteHeader.classList.toggle('is-expanded', isOpen);
+        if (navigationBackdrop) {
+            navigationBackdrop.hidden = !isOpen;
+        }
+
+        if (moveFocus) {
+            primaryNavigation.querySelector('a')?.focus();
+        }
+    };
+
     navigationToggle.addEventListener('click', () => {
         const isExpanded = navigationToggle.getAttribute('aria-expanded') === 'true';
-        navigationToggle.setAttribute('aria-expanded', String(!isExpanded));
-        navigationToggle.querySelector('.nav-toggle__label').textContent = isExpanded ? 'Buka menu' : 'Tutup menu';
-        primaryNavigation.classList.toggle('site-nav--open', !isExpanded);
+        setNavigationState(!isExpanded, !isExpanded);
     });
+
+    navigationToggle.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setNavigationState(false);
+            navigationToggle.focus();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setNavigationState(false);
+            navigationToggle.focus();
+        }
+    });
+
+    navigationBackdrop?.addEventListener('click', () => setNavigationState(false));
 }
 
 document.querySelectorAll('.report-toggle').forEach((toggle) => {
@@ -23,6 +53,10 @@ document.querySelectorAll('.report-toggle').forEach((toggle) => {
 
         toggle.setAttribute('aria-expanded', String(!isExpanded));
         form.hidden = isExpanded;
+
+        if (!isExpanded) {
+            form.querySelector('input, select, textarea')?.focus();
+        }
     });
 });
 
